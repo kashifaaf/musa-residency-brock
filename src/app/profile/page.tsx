@@ -20,6 +20,10 @@ export default async function ProfilePage() {
     .where(eq(users.email, session.user.email))
     .limit(1);
 
+  if (!user) {
+    redirect('/auth/signin');
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
       <div className="mb-8">

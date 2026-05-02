@@ -52,7 +52,7 @@ export function BookingForm({ homeId, maxGuests }: BookingFormProps) {
       });
 
       if (result.success) {
-        router.push(`/bookings/${result.data}`);
+        router.push(`/bookings`);
       } else {
         alert(result.error);
       }

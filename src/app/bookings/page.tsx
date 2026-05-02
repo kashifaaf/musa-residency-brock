@@ -31,11 +31,6 @@ export default async function BookingsPage() {
       booking: bookingRequests,
       guest: users,
       home: homes,
-      host: {
-        id: users.id,
-        name: users.name,
-        email: users.email,
-      },
     })
     .from(bookingRequests)
     .innerJoin(users, eq(bookingRequests.guestId, users.id))
@@ -45,8 +40,7 @@ export default async function BookingsPage() {
         eq(bookingRequests.guestId, user.id), // User is guest
         eq(homes.hostId, user.id) // User is host
       )
-    )
-    .orderBy(bookingRequests.createdAt);
+    );
 
   const bookings: BookingRequestWithDetails[] = bookingResults.map((result) => ({
     id: result.booking.id,

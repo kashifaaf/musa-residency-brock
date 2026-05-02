@@ -1,7 +1,6 @@
 'use server';
 
 import { getServerSession } from 'next-auth';
-import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { bookingRequests, users } from '@/lib/db/schema';
