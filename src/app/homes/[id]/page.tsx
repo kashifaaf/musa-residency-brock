@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { getHomeDetails } from '@/lib/actions/homes';
 import { BookingForm } from '@/components/booking/BookingForm';
 import { formatCurrency } from '@/lib/utils';
+import { HomePhoto } from '@/types';
 
 interface HomePageProps {
   params: {
@@ -34,7 +35,7 @@ export default async function HomePage({ params }: HomePageProps) {
           {/* Photo Gallery */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {home.photos && home.photos.length > 0 ? (
-              home.photos.map((photo, index) => (
+              home.photos.map((photo: HomePhoto, index: number) => (
                 <div key={photo.id} className="relative h-64 rounded-lg overflow-hidden">
                   <Image
                     src={photo.url}
