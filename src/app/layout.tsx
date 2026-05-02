@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import '@/styles/globals.css';
-import { AuthProvider } from '@/components/providers/AuthProvider';
-import { Header } from '@/components/layout/Header';
+import './globals.css';
+import { AuthProvider } from '@/components/AuthProvider';
+import { Navigation } from '@/components/Navigation';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Musa Residency - Creative Home Exchange',
-  description: 'Connect with fellow artists through our specialized home exchange platform',
+  title: 'Musa Residency - Artist Home Exchange',
+  description: 'Connect with fellow artists and exchange homes for creative residencies worldwide.',
 };
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          <Header />
+          <Navigation />
           <main className="min-h-screen bg-gray-50">
             {children}
           </main>

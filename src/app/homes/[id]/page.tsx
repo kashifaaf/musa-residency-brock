@@ -1,9 +1,12 @@
-import { notFound } from 'next/navigation';
-import Image from 'next/image';
-import { getHomeDetails } from '@/lib/actions/homes';
-import { BookingForm } from '@/components/booking/BookingForm';
-import { formatCurrency } from '@/lib/utils';
-import { HomePhoto } from '@/types';
+import { notFound, redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { getDb } from '@/lib/db';
+import { homes, users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { HomeDetails } from '@/components/HomeDetails';
+import { BookingForm } from '@/components/BookingForm';
+import { HomeWithHost } from '@/lib/types';
 
 interface HomePageProps {
   params: {
@@ -12,122 +15,75 @@ interface HomePageProps {
 }
 
 export default async function HomePage({ params }: HomePageProps) {
-  const result = await getHomeDetails(params.id);
+  const session = await getServerSession(authOptions);
+  const db = getDb();
 
-  if (!result.success) {
+  const [result] = await db
+    .select({
+      home: homes,
+      host: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        bio: users.bio,
+        location: users.location,
+        profilePhoto: users.profilePhoto,
+      },
+    })
+    .from(homes)
+    .innerJoin(users, eq(homes.hostId, users.id))
+    .where(eq(homes.id, params.id))
+    .limit(1);
+
+  if (!result) {
     notFound();
   }
 
-  const home = result.data;
-  const amenities = home.amenities ? JSON.parse(home.amenities) : [];
+  const home: HomeWithHost = {
+    id: result.home.id,
+    title: result.home.title,
+    description: result.home.description,
+    location: result.home.location,
+    maxGuests: result.home.maxGuests,
+    amenities: result.home.amenities ? JSON.parse(result.home.amenities) : [],
+    photos: result.home.photos ? JSON.parse(result.home.photos) : [],
+    host: {
+      id: result.host.id,
+      name: result.host.name,
+      profilePhoto: result.host.profilePhoto,
+    },
+    availability: [], // TODO: Load actual availability
+  };
+
+  // Check if current user is the host
+  const isHost = session?.user?.email === result.host.email;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">{home.title}</h1>
-        <p className="text-lg text-gray-600 mt-2">{home.location}</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Photos and Details */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Photo Gallery */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {home.photos && home.photos.length > 0 ? (
-              home.photos.map((photo: HomePhoto, index: number) => (
-                <div key={photo.id} className="relative h-64 rounded-lg overflow-hidden">
-                  <Image
-                    src={photo.url}
-                    alt={photo.caption || home.title}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              ))
-            ) : (
-              <div className="relative h-64 rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
-                <span className="text-gray-500">No photos available</span>
-              </div>
-            )}
-          </div>
-
-          {/* Host Info */}
-          <div className="card">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">
-              Hosted by {home.host?.name}
-            </h3>
-            <div className="flex items-center space-x-4">
-              {home.host?.photoUrl && (
-                <Image
-                  src={home.host.photoUrl}
-                  alt={home.host.name}
-                  width={60}
-                  height={60}
-                  className="rounded-full"
-                />
-              )}
-              <div>
-                <p className="font-medium">{home.host?.name}</p>
-                <p className="text-gray-600 text-sm">Verified Host</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="card">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">
-              About this space
-            </h3>
-            <p className="text-gray-600 whitespace-pre-wrap">{home.description}</p>
-          </div>
-
-          {/* Amenities */}
-          {amenities.length > 0 && (
-            <div className="card">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                Amenities
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                {amenities.map((amenity: string, index: number) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    <span className="text-gray-600">{amenity}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* House Rules */}
-          {home.houseRules && (
-            <div className="card">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                House rules
-              </h3>
-              <p className="text-gray-600 whitespace-pre-wrap">{home.houseRules}</p>
-            </div>
-          )}
+    <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <HomeDetails home={home} host={result.host} />
         </div>
-
-        {/* Right Column - Booking */}
+        
         <div className="lg:col-span-1">
-          <div className="sticky top-8">
-            <div className="card">
-              <div className="mb-6">
-                <div className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(home.pricePerNight)} <span className="text-lg font-normal text-gray-600">/ night</span>
-                </div>
-                <div className="flex items-center text-sm text-gray-500 space-x-4 mt-2">
-                  <span>{home.bedrooms} bedroom{home.bedrooms !== 1 ? 's' : ''}</span>
-                  <span>{home.bathrooms} bathroom{home.bathrooms !== 1 ? 's' : ''}</span>
-                  <span>Up to {home.maxGuests} guests</span>
-                </div>
-              </div>
-              
-              <BookingForm home={home} />
+          {!isHost && session ? (
+            <BookingForm homeId={home.id} maxGuests={home.maxGuests} />
+          ) : !session ? (
+            <div className="rounded-lg border border-gray-200 bg-white p-6">
+              <p className="text-center text-gray-600">
+                <a href="/auth/signin" className="text-blue-600 hover:underline">
+                  Sign in
+                </a>{' '}
+                to book this home.
+              </p>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-lg border border-gray-200 bg-white p-6">
+              <p className="text-center text-gray-600">
+                This is your listing. You cannot book your own home.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
