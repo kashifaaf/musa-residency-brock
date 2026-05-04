@@ -5,7 +5,6 @@ import { bookingRequests, homes, users } from '@/lib/db/schema';
 import { auth } from '@/lib/auth/config';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import Stripe from 'stripe';
 
 type ActionResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -14,6 +13,8 @@ function getStripe() {
   if (!stripeSecretKey) {
     throw new Error('STRIPE_SECRET_KEY environment variable is required');
   }
+  // Import Stripe dynamically to avoid issues during build
+  const Stripe = require('stripe');
   return new Stripe(stripeSecretKey);
 }
 
