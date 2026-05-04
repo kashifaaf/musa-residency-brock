@@ -1,106 +1,63 @@
-import { getDb } from '@/lib/db';
-import { homes, users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { SearchForm } from '@/components/SearchForm';
-import { HomeCard } from '@/components/HomeCard';
-import { HomeWithHost } from '@/lib/types';
+import { searchHomes } from '@/lib/actions/homes';
+import { SearchForm } from '@/components/homes/search-form';
+import { HomeCard } from '@/components/homes/home-card';
 
-interface SearchParams {
-  searchParams: {
+interface SearchPageProps {
+  searchParams: Promise<{
     location?: string;
     startDate?: string;
     endDate?: string;
-    guests?: string;
-  };
+  }>;
 }
 
-export default async function SearchPage({ searchParams }: SearchParams) {
-  const db = getDb();
-  
-  // Get all homes with host information
-  const homeResults = await db
-    .select({
-      home: homes,
-      host: {
-        id: users.id,
-        name: users.name,
-        profilePhoto: users.profilePhoto,
-      },
-    })
-    .from(homes)
-    .innerJoin(users, eq(homes.hostId, users.id))
-    .where(eq(homes.isActive, true));
+export default async function SearchPage({ searchParams }: SearchPageProps) {
+  const params = await searchParams;
+  const { location, startDate, endDate } = params;
 
-  // Transform the results
-  const availableHomes: HomeWithHost[] = homeResults.map((result) => ({
-    id: result.home.id,
-    title: result.home.title,
-    description: result.home.description,
-    location: result.home.location,
-    maxGuests: result.home.maxGuests,
-    amenities: result.home.amenities ? JSON.parse(result.home.amenities) : [],
-    photos: result.home.photos ? JSON.parse(result.home.photos) : [],
-    host: {
-      id: result.host.id,
-      name: result.host.name,
-      profilePhoto: result.host.profilePhoto,
-    },
-    availability: [], // TODO: Add availability filtering
-  }));
+  const startDateObj = startDate ? new Date(startDate) : undefined;
+  const endDateObj = endDate ? new Date(endDate) : undefined;
 
-  // Apply basic filters
-  let filteredHomes = availableHomes;
-
-  if (searchParams.location) {
-    const location = searchParams.location.toLowerCase();
-    filteredHomes = filteredHomes.filter(home => 
-      home.location.toLowerCase().includes(location)
-    );
-  }
-
-  if (searchParams.guests) {
-    const guestCount = parseInt(searchParams.guests);
-    if (!isNaN(guestCount)) {
-      filteredHomes = filteredHomes.filter(home => 
-        home.maxGuests >= guestCount
-      );
-    }
-  }
+  const result = await searchHomes(location, startDateObj, endDateObj);
+  const homes = result.success ? result.data : [];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Find Your Next Creative Space</h1>
-        <p className="mt-2 text-gray-600">
-          Discover inspiring homes and studios from fellow artists around the world.
-        </p>
+        <h1 className="text-3xl font-bold mb-6">Find Your Perfect Stay</h1>
+        <div className="bg-white p-6 rounded-lg border shadow-sm">
+          <SearchForm />
+        </div>
       </div>
 
-      <SearchForm />
+      {location && (
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold">
+            {homes.length} homes found
+            {location && ` in "${location}"`}
+            {startDate && endDate && ` from ${startDate} to ${endDate}`}
+          </h2>
+        </div>
+      )}
 
-      <div className="mt-8">
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-gray-600">
-            {filteredHomes.length} {filteredHomes.length === 1 ? 'home' : 'homes'} available
+      {homes.length === 0 ? (
+        <div className="text-center py-16">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold mb-2">No homes found</h3>
+          <p className="text-muted-foreground mb-4">
+            Try adjusting your search criteria or browse all available homes.
           </p>
         </div>
-
-        {filteredHomes.length === 0 ? (
-          <div className="text-center py-12">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-            <h3 className="mt-2 text-lg font-semibold text-gray-900">No homes found</h3>
-            <p className="mt-1 text-gray-500">Try adjusting your search filters.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredHomes.map((home) => (
-              <HomeCard key={home.id} home={home} />
-            ))}
-          </div>
-        )}
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {homes.map((home) => (
+            <HomeCard key={home.id} home={home} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

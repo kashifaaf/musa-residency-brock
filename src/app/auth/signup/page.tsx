@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth/config';
-import { SignInForm } from '@/components/auth/signin-form';
+import { SignUpForm } from '@/components/auth/signup-form';
 import Link from 'next/link';
 
-export default async function SignInPage() {
+export default async function SignUpPage() {
   const session = await auth();
   
   if (session?.user) {
@@ -13,11 +13,11 @@ export default async function SignInPage() {
   return (
     <div className="container mx-auto px-4 py-16">
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <SignInForm />
+        <SignUpForm />
         <p className="mt-4 text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{' '}
-          <Link href="/auth/signup" className="text-primary hover:underline">
-            Sign up
+          Already have an account?{' '}
+          <Link href="/auth/signin" className="text-primary hover:underline">
+            Sign in
           </Link>
         </p>
       </div>
