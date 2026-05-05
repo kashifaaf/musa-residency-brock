@@ -1,20 +1,22 @@
-import type { Config } from 'tailwindcss'
+import type { Config } from "tailwindcss"
 
-const config: Config = {
+export default {
   content: [
-    './pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './components/**/*.{js,ts,jsx,tsx,mdx}',
-    './app/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/**/*.{js,ts,jsx,tsx,mdx}',
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       colors: {
-        ring: 'rgb(59 130 246)',
-        background: 'rgb(255 255 255)',
+        primary: {
+          50: "#fef7ee",
+          500: "#f97316",
+          600: "#ea580c",
+          700: "#c2410c",
+        },
       },
     },
   },
   plugins: [],
-}
-export default config
+} satisfies Config

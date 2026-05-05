@@ -1,36 +1,27 @@
-import { SignJWT, jwtVerify } from 'jose';
-import bcrypt from 'bcryptjs';
+import NextAuth from "next-auth"
+import Google from "next-auth/providers/google"
+import { DrizzleAdapter } from "@auth/drizzle-adapter"
+import { getDb } from "@/db"
+import { accounts, sessions, users } from "@/db/schema"
 
-const secretKey = process.env.JWT_SECRET || 'fallback-secret-key';
-const key = new TextEncoder().encode(secretKey);
-
-export interface JWTPayload {
-  userId: string;
-  email: string;
-  exp?: number;
-}
-
-export async function signJWT(payload: Omit<JWTPayload, 'exp'>): Promise<string> {
-  return await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('24h')
-    .sign(key);
-}
-
-export async function verifyJWT(token: string): Promise<JWTPayload | null> {
-  try {
-    const { payload } = await jwtVerify(token, key);
-    return payload as JWTPayload;
-  } catch (error) {
-    return null;
-  }
-}
-
-export async function hashPassword(password: string): Promise<string> {
-  return await bcrypt.hash(password, 12);
-}
-
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return await bcrypt.compare(password, hash);
-}
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  adapter: DrizzleAdapter(getDb(), {
+    usersTable: users,
+    accountsTable: accounts,
+    sessionsTable: sessions,
+  }),
+  providers: [
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+  ],
+  callbacks: {
+    session({ session, user }) {
+      if (session.user) {
+        session.user.id = user.id
+      }
+      return session
+    },
+  },
+})

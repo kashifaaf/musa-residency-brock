@@ -1,39 +1,41 @@
-import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { getDb } from '@/lib/db';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { ProfileForm } from '@/components/ProfileForm';
+import { auth } from "@/lib/auth"
+import { redirect } from "next/navigation"
+import { getDb } from "@/db"
+import { users } from "@/db/schema"
+import { eq } from "drizzle-orm"
+import { ProfileForm } from "@/components/profile/ProfileForm"
 
 export default async function ProfilePage() {
-  const session = await getServerSession(authOptions);
+  const session = await auth()
   
-  if (!session?.user?.email) {
-    redirect('/auth/signin');
+  if (!session?.user?.id) {
+    redirect("/auth/signin")
   }
 
-  const db = getDb();
+  const db = getDb()
   const [user] = await db
     .select()
     .from(users)
-    .where(eq(users.email, session.user.email))
-    .limit(1);
+    .where(eq(users.id, session.user.id))
+    .limit(1)
 
   if (!user) {
-    redirect('/auth/signin');
+    redirect("/auth/signin")
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-12">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Your Profile</h1>
-        <p className="mt-2 text-gray-600">
-          Share information about yourself to help hosts get to know you better.
-        </p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-3xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-6 py-4 border-b">
+            <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
+            <p className="text-gray-600">Manage your profile information and preferences</p>
+          </div>
+          <div className="p-6">
+            <ProfileForm user={user} />
+          </div>
+        </div>
       </div>
-
-      <ProfileForm user={user} />
     </div>
-  );
+  )
 }

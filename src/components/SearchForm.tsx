@@ -1,73 +1,88 @@
-'use client';
+"use client"
 
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from './ui/Button';
-import { Input } from './ui/Input';
-import { Card } from './ui/Card';
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "./ui/Button"
 
 export function SearchForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  
-  const [formData, setFormData] = useState({
-    location: searchParams.get('location') || '',
-    startDate: searchParams.get('startDate') || '',
-    endDate: searchParams.get('endDate') || '',
-    guests: searchParams.get('guests') || '2',
-  });
+  const router = useRouter()
+  const [location, setLocation] = useState("")
+  const [checkIn, setCheckIn] = useState("")
+  const [checkOut, setCheckOut] = useState("")
+  const [guests, setGuests] = useState("")
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
+    const params = new URLSearchParams()
     
-    const params = new URLSearchParams();
-    if (formData.location) params.set('location', formData.location);
-    if (formData.startDate) params.set('startDate', formData.startDate);
-    if (formData.endDate) params.set('endDate', formData.endDate);
-    if (formData.guests) params.set('guests', formData.guests);
+    if (location) params.set("location", location)
+    if (checkIn) params.set("checkIn", checkIn)
+    if (checkOut) params.set("checkOut", checkOut)
+    if (guests) params.set("guests", guests)
 
-    router.push(`/search?${params.toString()}`);
-  };
+    router.push(`/homes?${params.toString()}`)
+  }
 
   return (
-    <Card>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Input
-          label="Where"
-          placeholder="City, country..."
-          value={formData.location}
-          onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-        />
-        
-        <Input
-          label="Check-in"
-          type="date"
-          value={formData.startDate}
-          onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-        />
-        
-        <Input
-          label="Check-out"
-          type="date"
-          value={formData.endDate}
-          onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-        />
-        
-        <Input
-          label="Guests"
-          type="number"
-          min="1"
-          max="10"
-          value={formData.guests}
-          onChange={(e) => setFormData(prev => ({ ...prev, guests: e.target.value }))}
-        />
-        
-        <div className="flex items-end">
-          <Button type="submit" className="w-full">
-            Search
-          </Button>
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+            Location
+          </label>
+          <input
+            type="text"
+            id="location"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Where are you going?"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
         </div>
-      </form>
-    </Card>
-  );
+        <div>
+          <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700 mb-1">
+            Check In
+          </label>
+          <input
+            type="date"
+            id="checkIn"
+            value={checkIn}
+            onChange={(e) => setCheckIn(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+        </div>
+        <div>
+          <label htmlFor="checkOut" className="block text-sm font-medium text-gray-700 mb-1">
+            Check Out
+          </label>
+          <input
+            type="date"
+            id="checkOut"
+            value={checkOut}
+            onChange={(e) => setCheckOut(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+        </div>
+        <div>
+          <label htmlFor="guests" className="block text-sm font-medium text-gray-700 mb-1">
+            Guests
+          </label>
+          <input
+            type="number"
+            id="guests"
+            value={guests}
+            onChange={(e) => setGuests(e.target.value)}
+            placeholder="1"
+            min="1"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+        </div>
+      </div>
+      <div className="mt-4">
+        <Button type="submit" className="w-full md:w-auto">
+          Search
+        </Button>
+      </div>
+    </form>
+  )
 }
