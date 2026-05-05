@@ -2,7 +2,9 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "./ui/Button"
+import { Input } from "@/components/ui/Input"
+import { Button } from "@/components/ui/Button"
+import { Search } from "lucide-react"
 
 export function SearchForm() {
   const router = useRouter()
@@ -11,76 +13,57 @@ export function SearchForm() {
   const [checkOut, setCheckOut] = useState("")
   const [guests, setGuests] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  function handleSearch(e: React.FormEvent) {
     e.preventDefault()
-    const params = new URLSearchParams()
     
+    const params = new URLSearchParams()
     if (location) params.set("location", location)
     if (checkIn) params.set("checkIn", checkIn)
     if (checkOut) params.set("checkOut", checkOut)
     if (guests) params.set("guests", guests)
-
-    router.push(`/homes?${params.toString()}`)
+    
+    router.push(`/search?${params.toString()}`)
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
-            Location
-          </label>
-          <input
-            type="text"
-            id="location"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="Where are you going?"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
-        <div>
-          <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700 mb-1">
-            Check In
-          </label>
-          <input
-            type="date"
-            id="checkIn"
-            value={checkIn}
-            onChange={(e) => setCheckIn(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
-        <div>
-          <label htmlFor="checkOut" className="block text-sm font-medium text-gray-700 mb-1">
-            Check Out
-          </label>
-          <input
-            type="date"
-            id="checkOut"
-            value={checkOut}
-            onChange={(e) => setCheckOut(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
-        <div>
-          <label htmlFor="guests" className="block text-sm font-medium text-gray-700 mb-1">
-            Guests
-          </label>
-          <input
-            type="number"
-            id="guests"
-            value={guests}
-            onChange={(e) => setGuests(e.target.value)}
-            placeholder="1"
-            min="1"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
+    <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div>
+        <Input
+          type="text"
+          placeholder="Where to?"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+        />
       </div>
-      <div className="mt-4">
-        <Button type="submit" className="w-full md:w-auto">
-          Search
+      
+      <div>
+        <Input
+          type="date"
+          placeholder="Check in"
+          value={checkIn}
+          onChange={(e) => setCheckIn(e.target.value)}
+        />
+      </div>
+      
+      <div>
+        <Input
+          type="date"
+          placeholder="Check out"
+          value={checkOut}
+          onChange={(e) => setCheckOut(e.target.value)}
+        />
+      </div>
+      
+      <div className="flex space-x-2">
+        <Input
+          type="number"
+          placeholder="Guests"
+          min="1"
+          value={guests}
+          onChange={(e) => setGuests(e.target.value)}
+        />
+        <Button type="submit" className="px-4">
+          <Search className="w-4 h-4" />
         </Button>
       </div>
     </form>

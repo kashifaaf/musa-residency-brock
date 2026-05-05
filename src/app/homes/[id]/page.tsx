@@ -1,78 +1,80 @@
-import { auth } from "@/lib/auth"
-import { getDb } from "@/db"
-import { homes, users } from "@/db/schema"
-import { eq } from "drizzle-orm"
 import { notFound } from "next/navigation"
-import { HomeDetails } from "@/components/homes/HomeDetails"
-import { BookingForm } from "@/components/bookings/BookingForm"
+import { getDb } from "@/lib/db"
+import { homes, users } from "@/lib/db/schema"
+import { eq } from "drizzle-orm"
+import { HomeDetails } from "@/components/HomeDetails"
+import { BookingForm } from "@/components/BookingForm"
+import { auth } from "@/lib/auth"
+import type { HomeWithHost } from "@/lib/types"
 
-export default async function HomeDetailsPage({
-  params,
-}: {
-  params: { id: string }
-}) {
+interface HomePageProps {
+  params: Promise<{ id: string }>
+}
+
+export default async function HomePage({ params }: HomePageProps) {
+  const { id } = await params
   const session = await auth()
   const db = getDb()
+  
+  try {
+    const result = await db
+      .select({
+        id: homes.id,
+        title: homes.title,
+        description: homes.description,
+        address: homes.address,
+        city: homes.city,
+        country: homes.country,
+        pricePerNight: homes.pricePerNight,
+        bedrooms: homes.bedrooms,
+        bathrooms: homes.bathrooms,
+        maxGuests: homes.maxGuests,
+        amenities: homes.amenities,
+        photos: homes.photos,
+        isActive: homes.isActive,
+        createdAt: homes.createdAt,
+        updatedAt: homes.updatedAt,
+        host: {
+          id: users.id,
+          name: users.name,
+          image: users.image,
+          location: users.location,
+        }
+      })
+      .from(homes)
+      .innerJoin(users, eq(homes.hostId, users.id))
+      .where(eq(homes.id, id))
+      .limit(1)
 
-  const [homeData] = await db
-    .select({
-      home: homes,
-      host: users,
-    })
-    .from(homes)
-    .leftJoin(users, eq(homes.userId, users.id))
-    .where(eq(homes.id, params.id))
-    .limit(1)
+    if (result.length === 0) {
+      notFound()
+    }
 
-  if (!homeData) {
-    notFound()
-  }
+    const home = result[0] as HomeWithHost
 
-  const { home, host } = homeData
-  const isOwner = session?.user?.id === home.userId
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <HomeDetails home={home} host={host} />
+            <HomeDetails home={home} />
           </div>
+          
           <div className="lg:col-span-1">
-            {!isOwner && session && (
+            {session && session.user?.id !== home.host.id ? (
               <BookingForm home={home} />
-            )}
-            {!session && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Ready to book?</h3>
-                <p className="text-gray-600 mb-4">
-                  Sign in to request a booking and connect with the host.
+            ) : (
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <p className="text-gray-600 text-center">
+                  {session ? "You cannot book your own home" : "Sign in to book this home"}
                 </p>
-                <a
-                  href="/auth/signin"
-                  className="w-full bg-primary-600 text-white px-4 py-2 rounded-md font-medium hover:bg-primary-700 transition-colors inline-block text-center"
-                >
-                  Sign In to Book
-                </a>
-              </div>
-            )}
-            {isOwner && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">This is your listing</h3>
-                <p className="text-gray-600 mb-4">
-                  You can edit your listing details or view booking requests.
-                </p>
-                <a
-                  href={`/homes/${home.id}/edit`}
-                  className="w-full bg-gray-600 text-white px-4 py-2 rounded-md font-medium hover:bg-gray-700 transition-colors inline-block text-center"
-                >
-                  Edit Listing
-                </a>
               </div>
             )}
           </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  } catch (error) {
+    console.error("Error loading home:", error)
+    notFound()
+  }
 }

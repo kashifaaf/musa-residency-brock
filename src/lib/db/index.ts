@@ -1,22 +1,19 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
-import * as schema from './schema';
+import { drizzle } from "drizzle-orm/neon-http"
+import { neon } from "@neondatabase/serverless"
+import * as schema from "./schema"
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let db: ReturnType<typeof drizzle> | null = null
 
 export function getDb() {
-  if (_db) return _db;
-  
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error('DATABASE_URL environment variable is not set');
+  if (!db) {
+    const databaseUrl = process.env.DATABASE_URL
+    if (!databaseUrl) {
+      throw new Error("DATABASE_URL environment variable is not set")
+    }
+    
+    const sql = neon(databaseUrl)
+    db = drizzle(sql, { schema })
   }
-
-  const sql = neon(connectionString);
-  _db = drizzle(sql, { schema });
-  return _db;
+  
+  return db
 }
-
-export const db = getDb();
-
-export * from './schema';

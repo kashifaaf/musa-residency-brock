@@ -1,70 +1,55 @@
-export interface ActionResult<T> {
-  success: true;
-  data: T;
+import { Booking } from "./db/schema"
+
+export type ActionResult<T> = 
+  | { success: true; data: T }
+  | { success: false; error: string }
+
+export interface SearchFilters {
+  location?: string
+  checkIn?: string
+  checkOut?: string
+  guests?: number
+  minPrice?: number
+  maxPrice?: number
 }
 
-export interface ActionError {
-  success: false;
-  error: string;
+export interface HomeWithHost {
+  id: string
+  title: string
+  description: string
+  address: string
+  city: string
+  country: string
+  pricePerNight: number
+  bedrooms: number
+  bathrooms: number
+  maxGuests: number
+  amenities: string[] | null
+  photos: string[] | null
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+  host: {
+    id: string
+    name: string
+    image: string | null
+    location: string | null
+  }
 }
 
-export type ActionResponse<T> = ActionResult<T> | ActionError;
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  bio?: string;
-  location?: string;
-  workInfo?: string;
-  socialMedia?: string;
-  profilePhoto?: string;
-  emailVerified: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface Home {
-  id: string;
-  hostId: string;
-  title: string;
-  description: string;
-  location: string;
-  pricePerNight: string;
-  bedrooms: number;
-  bathrooms: number;
-  maxGuests: number;
-  amenities: string[] | null;
-  photos: string[] | null;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  host?: User;
-}
-
-export interface BookingRequest {
-  id: string;
-  homeId: string;
-  guestId: string;
-  hostId: string;
-  startDate: Date;
-  endDate: Date;
-  totalPrice: string;
-  guestCount: number;
-  message?: string;
-  status: 'pending' | 'approved' | 'declined' | 'paid' | 'cancelled';
-  paymentIntentId?: string;
-  hostResponseDeadline: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  home?: Home;
-  guest?: User;
-  host?: User;
-}
-
-export interface SearchParams {
-  location?: string;
-  startDate?: string;
-  endDate?: string;
-  guests?: string;
+export interface BookingWithDetails extends Booking {
+  home: {
+    title: string
+    city: string
+    country: string
+    photos: string[] | null
+  }
+  guest: {
+    name: string
+    image: string | null
+  }
+  host: {
+    name: string
+    image: string | null
+  }
 }

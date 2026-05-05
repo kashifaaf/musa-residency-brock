@@ -1,159 +1,114 @@
-'use client';
-
-import { useState } from 'react';
-import { Button } from './ui/Button';
-import { Card } from './ui/Card';
-import { BookingRequestWithDetails } from '@/lib/types';
-import { formatDate, formatCurrency } from '@/lib/utils';
-import { approveBookingRequest, declineBookingRequest } from '@/app/actions/bookings';
+import Image from "next/image"
+import Link from "next/link"
+import { Calendar, MapPin } from "lucide-react"
+import { formatDate, formatPrice } from "@/lib/utils"
+import { Button } from "@/components/ui/Button"
+import { BookingActions } from "@/components/BookingActions"
+import type { BookingWithDetails } from "@/lib/types"
 
 interface BookingCardProps {
-  booking: BookingRequestWithDetails;
-  currentUserId: string;
+  booking: BookingWithDetails
+  currentUserId: string
 }
 
 export function BookingCard({ booking, currentUserId }: BookingCardProps) {
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState(booking.status);
+  const isHost = booking.hostId === currentUserId
+  const isGuest = booking.guestId === currentUserId
   
-  const isHost = currentUserId !== booking.guest.id;
-  const canRespond = isHost && status === 'pending';
-
-  const handleApprove = async () => {
-    setLoading(true);
-    try {
-      const result = await approveBookingRequest(booking.id);
-      if (result.success) {
-        setStatus('approved');
-      } else {
-        alert(result.error);
-      }
-    } catch (error) {
-      alert('Failed to approve booking');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDecline = async () => {
-    setLoading(true);
-    try {
-      const result = await declineBookingRequest(booking.id);
-      if (result.success) {
-        setStatus('declined');
-      } else {
-        alert(result.error);
-      }
-    } catch (error) {
-      alert('Failed to decline booking');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'text-yellow-600 bg-yellow-50';
-      case 'approved': return 'text-green-600 bg-green-50';
-      case 'declined': return 'text-red-600 bg-red-50';
-      case 'paid': return 'text-blue-600 bg-blue-50';
-      default: return 'text-gray-600 bg-gray-50';
-    }
-  };
+  const statusColors = {
+    pending: "bg-yellow-100 text-yellow-800",
+    approved: "bg-green-100 text-green-800",
+    declined: "bg-red-100 text-red-800",
+    cancelled: "bg-gray-100 text-gray-800",
+    completed: "bg-blue-100 text-blue-800",
+  }
 
   return (
-    <Card>
-      <div className="flex items-start justify-between">
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="flex flex-col md:flex-row gap-4">
+        {/* Home Image */}
+        <div className="w-full md:w-48 h-32 relative rounded-lg overflow-hidden">
+          <Image
+            src={booking.home.photos?.[0] || "/placeholder-home.jpg"}
+            alt={booking.home.title}
+            fill
+            className="object-cover"
+          />
+        </div>
+
+        {/* Booking Details */}
         <div className="flex-1">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-semibold text-gray-900">{booking.home.title}</h3>
-              <p className="text-sm text-gray-600">{booking.home.location}</p>
-            </div>
-            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(status)}`}>
-              {status.charAt(0).toUpperCase() + status.slice(1)}
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="text-lg font-semibold text-gray-900">
+              <Link href={`/homes/${booking.homeId}`} className="hover:text-gray-700">
+                {booking.home.title}
+              </Link>
+            </h3>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[booking.status]}`}>
+              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
             </span>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <h4 className="text-sm font-medium text-gray-900">Dates</h4>
-              <p className="text-sm text-gray-600">
-                {formatDate(booking.startDate)} - {formatDate(booking.endDate)}
-              </p>
-            </div>
-            
-            <div>
-              <h4 className="text-sm font-medium text-gray-900">Guests</h4>
-              <p className="text-sm text-gray-600">{booking.guestCount}</p>
-            </div>
-            
-            {booking.totalAmount && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-900">Total</h4>
-                <p className="text-sm text-gray-600">{formatCurrency(booking.totalAmount)}</p>
-              </div>
-            )}
+          <div className="flex items-center text-gray-600 mb-2">
+            <MapPin className="w-4 h-4 mr-1" />
+            <span className="text-sm">{booking.home.city}, {booking.home.country}</span>
           </div>
 
-          {isHost ? (
-            <div className="mt-4">
-              <h4 className="text-sm font-medium text-gray-900">Guest</h4>
-              <div className="mt-2 flex items-start space-x-3">
-                {booking.guest.profilePhoto ? (
-                  <img
-                    src={booking.guest.profilePhoto}
-                    alt={booking.guest.name}
-                    className="h-10 w-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                    <span className="text-sm font-medium text-gray-600">
-                      {booking.guest.name.charAt(0)}
-                    </span>
-                  </div>
-                )}
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">{booking.guest.name}</p>
-                  {booking.guest.location && (
-                    <p className="text-sm text-gray-600">{booking.guest.location}</p>
-                  )}
-                  {booking.message && (
-                    <p className="mt-2 text-sm text-gray-700">{booking.message}</p>
-                  )}
-                </div>
-              </div>
+          <div className="flex items-center text-gray-600 mb-3">
+            <Calendar className="w-4 h-4 mr-1" />
+            <span className="text-sm">
+              {formatDate(booking.checkIn)} - {formatDate(booking.checkOut)}
+            </span>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <div>
+              <span className="text-lg font-semibold">{formatPrice(booking.totalAmount)}</span>
+              <span className="text-sm text-gray-600 ml-1">total</span>
             </div>
-          ) : (
-            booking.message && (
-              <div className="mt-4">
-                <h4 className="text-sm font-medium text-gray-900">Your message</h4>
-                <p className="mt-1 text-sm text-gray-700">{booking.message}</p>
-              </div>
-            )
+
+            {/* Show different info based on user role */}
+            <div className="text-sm text-gray-600">
+              {isHost ? (
+                <span>Guest: {booking.guest.name}</span>
+              ) : (
+                <span>Host: {booking.host.name}</span>
+              )}
+            </div>
+          </div>
+
+          {/* Request Message */}
+          {booking.requestMessage && (
+            <div className="mt-3 p-3 bg-gray-50 rounded">
+              <p className="text-sm text-gray-700">
+                <strong>Guest message:</strong> {booking.requestMessage}
+              </p>
+            </div>
           )}
 
-          {canRespond && (
-            <div className="mt-6 flex space-x-3">
-              <Button
-                onClick={handleApprove}
-                loading={loading}
-                size="sm"
-              >
-                Approve
-              </Button>
-              <Button
-                onClick={handleDecline}
-                variant="outline"
-                loading={loading}
-                size="sm"
-              >
-                Decline
-              </Button>
+          {/* Response Message */}
+          {booking.responseMessage && (
+            <div className="mt-3 p-3 bg-gray-50 rounded">
+              <p className="text-sm text-gray-700">
+                <strong>Host response:</strong> {booking.responseMessage}
+              </p>
             </div>
           )}
         </div>
+
+        {/* Actions */}
+        <div className="flex md:flex-col gap-2">
+          {isHost && booking.status === "pending" && (
+            <BookingActions bookingId={booking.id} />
+          )}
+          
+          <Link href={`/bookings/${booking.id}`}>
+            <Button variant="outline" size="sm">
+              View Details
+            </Button>
+          </Link>
+        </div>
       </div>
-    </Card>
-  );
+    </div>
+  )
 }

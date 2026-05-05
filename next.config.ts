@@ -3,7 +3,16 @@ import type { NextConfig } from "next"
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@neondatabase/serverless"],
   images: {
-    domains: ["lh3.googleusercontent.com", "res.cloudinary.com"],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.amazonaws.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      }
+    ],
   },
 }
 

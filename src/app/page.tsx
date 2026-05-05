@@ -1,129 +1,114 @@
-import { auth } from "@/lib/auth"
-import { getDb } from "@/db"
-import { homes, users } from "@/db/schema"
-import { eq, and, gte } from "drizzle-orm"
-import { HomeCard } from "@/components/HomeCard"
-import { SearchForm } from "@/components/SearchForm"
 import { Button } from "@/components/ui/Button"
+import { SearchForm } from "@/components/SearchForm"
+import { FeaturedHomes } from "@/components/FeaturedHomes"
 import Link from "next/link"
+import { Palette, Users, Globe } from "lucide-react"
 
-export default async function HomePage() {
-  const session = await auth()
-  const db = getDb()
-
-  const recentHomes = await db
-    .select({
-      home: homes,
-      host: {
-        name: users.name,
-        image: users.image,
-      },
-    })
-    .from(homes)
-    .leftJoin(users, eq(homes.userId, users.id))
-    .where(and(eq(homes.isActive, true)))
-    .limit(8)
-
+export default function HomePage() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary-50 to-orange-100 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-              Creative Spaces for Artists
-            </h1>
-            <p className="mt-6 text-lg leading-8 text-gray-600 max-w-2xl mx-auto">
-              Exchange homes with fellow artists worldwide. Find inspiring spaces that support your creative practice and cultural exploration.
-            </p>
-            {!session ? (
-              <div className="mt-10 flex items-center justify-center gap-x-6">
-                <Link href="/auth/signin">
-                  <Button size="lg">Get Started</Button>
-                </Link>
-                <Link href="#how-it-works" className="text-sm font-semibold leading-6 text-gray-900">
-                  Learn more <span aria-hidden="true">→</span>
-                </Link>
-              </div>
-            ) : (
-              <div className="mt-10 flex items-center justify-center gap-x-6">
-                <Link href="/homes">
-                  <Button size="lg">Browse Homes</Button>
-                </Link>
-                <Link href="/homes/new">
-                  <Button variant="outline" size="lg">List Your Home</Button>
-                </Link>
-              </div>
-            )}
+      <section className="bg-gradient-to-br from-orange-50 to-pink-50 py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+            Creative Home Exchange
+            <br />
+            <span className="text-orange-600">for Artists</span>
+          </h1>
+          <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+            Connect with fellow artists worldwide. Exchange homes, studios, and creative spaces 
+            for authentic cultural immersion and artistic inspiration.
+          </p>
+          
+          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6 mb-8">
+            <SearchForm />
+          </div>
+          
+          <div className="flex justify-center space-x-4">
+            <Link href="/search">
+              <Button size="lg">Start Exploring</Button>
+            </Link>
+            <Link href="/host">
+              <Button variant="outline" size="lg">List Your Space</Button>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Search Section */}
-      <section className="py-12 bg-white">
+      {/* Features Section */}
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900">Find Your Next Creative Space</h2>
-            <p className="mt-2 text-gray-600">Search available homes for your creative journey</p>
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+            Designed for Creative Minds
+          </h2>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Palette className="w-8 h-8 text-orange-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Artist-First Design
+              </h3>
+              <p className="text-gray-600">
+                Spaces designed with creative work in mind. Find studios, inspiring environments, 
+                and homes that understand an artist's needs.
+              </p>
+            </div>
+            
+            <div className="text-center">
+              <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-pink-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Creative Community
+              </h3>
+              <p className="text-gray-600">
+                Connect with like-minded artists. Share portfolios, collaborate, 
+                and build lasting relationships across the globe.
+              </p>
+            </div>
+            
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Globe className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Cultural Exchange
+              </h3>
+              <p className="text-gray-600">
+                Immerse yourself in local art scenes. Get insider knowledge 
+                from fellow creatives about galleries, studios, and communities.
+              </p>
+            </div>
           </div>
-          <SearchForm />
         </div>
       </section>
 
       {/* Featured Homes */}
-      <section className="py-12 bg-gray-50">
+      <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900">Featured Creative Spaces</h2>
-            <p className="mt-2 text-gray-600">Discover inspiring homes from our community</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {recentHomes.map(({ home, host }) => (
-              <HomeCard
-                key={home.id}
-                home={home}
-                host={host}
-              />
-            ))}
-          </div>
-          {recentHomes.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No homes available yet. Be the first to list yours!</p>
-            </div>
-          )}
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+            Featured Creative Spaces
+          </h2>
+          <FeaturedHomes />
         </div>
       </section>
 
-      {/* How It Works */}
-      <section id="how-it-works" className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900">How It Works</h2>
-            <p className="mt-2 text-gray-600">Simple steps to your next creative adventure</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold text-lg mx-auto mb-4">
-                1
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Create Your Profile</h3>
-              <p className="text-gray-600">Share your artistic practice and what makes your space special</p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold text-lg mx-auto mb-4">
-                2
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Browse & Request</h3>
-              <p className="text-gray-600">Find inspiring spaces and submit booking requests with your project details</p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold text-lg mx-auto mb-4">
-                3
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Connect & Create</h3>
-              <p className="text-gray-600">Get approved by hosts and start your creative journey</p>
-            </div>
-          </div>
+      {/* CTA Section */}
+      <section className="py-16 bg-gray-900 text-white">
+        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold mb-4">
+            Ready to Start Your Creative Journey?
+          </h2>
+          <p className="text-xl text-gray-300 mb-8">
+            Join our community of artists creating, sharing, and inspiring across the world.
+          </p>
+          <Link href="/auth/signin">
+            <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100">
+              Join Musa Residency
+            </Button>
+          </Link>
         </div>
       </section>
     </div>

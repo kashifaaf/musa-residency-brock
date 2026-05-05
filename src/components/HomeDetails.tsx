@@ -1,94 +1,106 @@
-import { HomeWithHost } from '@/lib/types';
+import Image from "next/image"
+import { MapPin, Users, Bed, Bath, Wifi, Car, Coffee } from "lucide-react"
+import { formatPrice } from "@/lib/utils"
+import type { HomeWithHost } from "@/lib/types"
 
 interface HomeDetailsProps {
-  home: HomeWithHost;
-  host: {
-    name: string;
-    bio: string | null;
-    location: string | null;
-    profilePhoto: string | null;
-  };
+  home: HomeWithHost
 }
 
-export function HomeDetails({ home, host }: HomeDetailsProps) {
+const amenityIcons = {
+  wifi: Wifi,
+  parking: Car,
+  kitchen: Coffee,
+}
+
+export function HomeDetails({ home }: HomeDetailsProps) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Photo Gallery */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {home.photos.length > 0 ? (
-          home.photos.map((photo, index) => (
-            <img
-              key={index}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {home.photos?.slice(0, 4).map((photo, index) => (
+          <div key={index} className={`${index === 0 ? 'md:row-span-2' : ''} aspect-square relative rounded-lg overflow-hidden`}>
+            <Image
               src={photo}
               alt={`${home.title} - Photo ${index + 1}`}
-              className="h-64 w-full rounded-lg object-cover"
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
             />
-          ))
-        ) : (
-          <div className="h-64 w-full rounded-lg bg-gray-200 flex items-center justify-center">
-            <span className="text-gray-500">No photos available</span>
           </div>
-        )}
+        ))}
       </div>
 
-      {/* Home Info */}
+      {/* Title and Basic Info */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">{home.title}</h1>
-        <p className="mt-2 text-lg text-gray-600">{home.location}</p>
-        <p className="mt-1 text-gray-600">Up to {home.maxGuests} guests</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">{home.title}</h1>
+        <div className="flex items-center text-gray-600 mb-4">
+          <MapPin className="w-5 h-5 mr-2" />
+          <span>{home.city}, {home.country}</span>
+        </div>
+        
+        <div className="flex items-center space-x-6 text-gray-600">
+          <div className="flex items-center">
+            <Users className="w-5 h-5 mr-1" />
+            <span>{home.maxGuests} guests</span>
+          </div>
+          <div className="flex items-center">
+            <Bed className="w-5 h-5 mr-1" />
+            <span>{home.bedrooms} bedrooms</span>
+          </div>
+          <div className="flex items-center">
+            <Bath className="w-5 h-5 mr-1" />
+            <span>{home.bathrooms} bathrooms</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Host Info */}
+      <div className="border-t border-b border-gray-200 py-6">
+        <div className="flex items-center">
+          {home.host.image && (
+            <Image
+              src={home.host.image}
+              alt={home.host.name}
+              width={48}
+              height={48}
+              className="rounded-full mr-4"
+            />
+          )}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Hosted by {home.host.name}
+            </h3>
+            {home.host.location && (
+              <p className="text-gray-600">{home.host.location}</p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Description */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-900">About this space</h2>
-        <p className="mt-4 whitespace-pre-wrap text-gray-700">{home.description}</p>
+        <h2 className="text-xl font-semibold text-gray-900 mb-3">About this space</h2>
+        <p className="text-gray-700 leading-relaxed">{home.description}</p>
       </div>
 
       {/* Amenities */}
-      {home.amenities.length > 0 && (
+      {home.amenities && home.amenities.length > 0 && (
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Amenities</h2>
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {home.amenities.map((amenity) => (
-              <div key={amenity} className="flex items-center space-x-2">
-                <svg className="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                <span className="text-gray-700">{amenity}</span>
-              </div>
-            ))}
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">Amenities</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {home.amenities.map((amenity) => {
+              const IconComponent = amenityIcons[amenity as keyof typeof amenityIcons]
+              return (
+                <div key={amenity} className="flex items-center">
+                  {IconComponent && <IconComponent className="w-5 h-5 mr-2 text-gray-600" />}
+                  <span className="text-gray-700 capitalize">{amenity}</span>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
-
-      {/* Host Info */}
-      <div className="border-t pt-8">
-        <h2 className="text-xl font-semibold text-gray-900">Meet your host</h2>
-        <div className="mt-4 flex items-start space-x-4">
-          {host.profilePhoto ? (
-            <img
-              src={host.profilePhoto}
-              alt={host.name}
-              className="h-16 w-16 rounded-full object-cover"
-            />
-          ) : (
-            <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center">
-              <svg className="h-8 w-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-              </svg>
-            </div>
-          )}
-          <div>
-            <h3 className="font-semibold text-gray-900">{host.name}</h3>
-            {host.location && (
-              <p className="text-sm text-gray-600">{host.location}</p>
-            )}
-            {host.bio && (
-              <p className="mt-2 text-gray-700">{host.bio}</p>
-            )}
-          </div>
-        </div>
-      </div>
     </div>
-  );
+  )
 }

@@ -1,25 +1,16 @@
-"use client"
-
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
-import "./globals.css"
-import { SessionProvider } from "next-auth/react"
+import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Providers } from "@/components/Providers"
 import { Navigation } from "@/components/Navigation"
+import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
 
-interface ClientLayoutProps {
-  children: React.ReactNode
-  session?: any
-}
-
-function ClientLayout({ children, session }: ClientLayoutProps) {
-  return (
-    <SessionProvider session={session}>
-      <Navigation />
-      <main>{children}</main>
-    </SessionProvider>
-  )
+export const metadata: Metadata = {
+  title: "Musa Residency - Creative Home Exchange",
+  description: "Connect with artists worldwide through our specialized home exchange platform designed for the creative community.",
 }
 
 export default function RootLayout({
@@ -30,9 +21,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ClientLayout session={undefined}>
-          {children}
-        </ClientLayout>
+        <Providers>
+          <Navigation />
+          <main className="min-h-screen">
+            {children}
+          </main>
+        </Providers>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )

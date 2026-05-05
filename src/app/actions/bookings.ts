@@ -1,102 +1,116 @@
-'use server';
+"use server"
 
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { getDb } from '@/lib/db';
-import { bookingRequests, users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { ActionResult } from '@/lib/types';
+import { auth } from "@/lib/auth"
+import { getDb } from "@/lib/db"
+import { bookings, homes } from "@/lib/db/schema"
+import { eq } from "drizzle-orm"
+import { revalidatePath } from "next/cache"
+import type { ActionResult } from "@/lib/types"
 
-interface BookingRequestData {
-  homeId: string;
-  startDate: string;
-  endDate: string;
-  guestCount: number;
-  message: string;
-  totalAmount: number;
+interface CreateBookingData {
+  homeId: string
+  checkIn: string
+  checkOut: string
+  guests: number
+  message?: string
+  totalAmount: number
 }
 
-export async function createBookingRequest(data: BookingRequestData): Promise<ActionResult<string>> {
+export async function createBookingRequest(data: CreateBookingData): Promise<ActionResult<{ id: string }>> {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return { success: false, error: 'Not authenticated' };
+    const session = await auth()
+    
+    if (!session?.user?.id) {
+      return { success: false, error: "Authentication required" }
     }
 
-    const db = getDb();
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, session.user.email))
-      .limit(1);
-
-    if (!user) {
-      return { success: false, error: 'User not found' };
+    const db = getDb()
+    
+    // Get the home to find the hostId
+    const [home] = await db.select({ hostId: homes.hostId })
+      .from(homes)
+      .where(eq(homes.id, data.homeId))
+    
+    if (!home) {
+      return { success: false, error: "Home not found" }
     }
+    
+    // Calculate expiration time (24 hours from now)
+    const expiresAt = new Date()
+    expiresAt.setHours(expiresAt.getHours() + 24)
+    
+    const [booking] = await db.insert(bookings).values({
+      homeId: data.homeId,
+      guestId: session.user.id,
+      hostId: home.hostId,
+      checkIn: new Date(data.checkIn),
+      checkOut: new Date(data.checkOut),
+      totalAmount: data.totalAmount,
+      requestMessage: data.message,
+      expiresAt,
+    }).returning({ id: bookings.id })
 
-    const [booking] = await db
-      .insert(bookingRequests)
-      .values({
-        homeId: data.homeId,
-        guestId: user.id,
-        startDate: new Date(data.startDate),
-        endDate: new Date(data.endDate),
-        guestCount: data.guestCount,
-        message: data.message,
-        totalAmount: data.totalAmount * 100, // Convert to cents
-        status: 'pending',
-      })
-      .returning({ id: bookingRequests.id });
-
-    return { success: true, data: booking.id };
+    revalidatePath("/bookings")
+    
+    return { success: true, data: { id: booking.id } }
   } catch (error) {
-    console.error('Create booking request error:', error);
-    return { success: false, error: 'Failed to create booking request' };
+    console.error("Error creating booking request:", error)
+    return { success: false, error: "Failed to create booking request" }
   }
 }
 
-export async function approveBookingRequest(bookingId: string): Promise<ActionResult<void>> {
+export async function approveBooking(bookingId: string): Promise<ActionResult<void>> {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return { success: false, error: 'Not authenticated' };
+    const session = await auth()
+    
+    if (!session?.user?.id) {
+      return { success: false, error: "Authentication required" }
     }
 
-    const db = getDb();
-    await db
-      .update(bookingRequests)
-      .set({ 
-        status: 'approved',
-        updatedAt: new Date(),
+    const db = getDb()
+    
+    // TODO: Verify that the current user is the host of this booking
+    // TODO: Create Stripe payment intent
+    
+    await db.update(bookings)
+      .set({
+        status: "approved",
+        respondedAt: new Date(),
       })
-      .where(eq(bookingRequests.id, bookingId));
+      .where(eq(bookings.id, bookingId))
 
-    return { success: true, data: undefined };
+    revalidatePath("/bookings")
+    
+    return { success: true, data: undefined }
   } catch (error) {
-    console.error('Approve booking error:', error);
-    return { success: false, error: 'Failed to approve booking' };
+    console.error("Error approving booking:", error)
+    return { success: false, error: "Failed to approve booking" }
   }
 }
 
-export async function declineBookingRequest(bookingId: string): Promise<ActionResult<void>> {
+export async function declineBooking(bookingId: string, message?: string): Promise<ActionResult<void>> {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return { success: false, error: 'Not authenticated' };
+    const session = await auth()
+    
+    if (!session?.user?.id) {
+      return { success: false, error: "Authentication required" }
     }
 
-    const db = getDb();
-    await db
-      .update(bookingRequests)
-      .set({ 
-        status: 'declined',
-        updatedAt: new Date(),
+    const db = getDb()
+    
+    await db.update(bookings)
+      .set({
+        status: "declined",
+        responseMessage: message,
+        respondedAt: new Date(),
       })
-      .where(eq(bookingRequests.id, bookingId));
+      .where(eq(bookings.id, bookingId))
 
-    return { success: true, data: undefined };
+    revalidatePath("/bookings")
+    
+    return { success: true, data: undefined }
   } catch (error) {
-    console.error('Decline booking error:', error);
-    return { success: false, error: 'Failed to decline booking' };
+    console.error("Error declining booking:", error)
+    return { success: false, error: "Failed to decline booking" }
   }
 }

@@ -1,141 +1,179 @@
-'use client';
+"use client"
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from './ui/Button';
-import { Input } from './ui/Input';
-import { Textarea } from './ui/Textarea';
-import { Card } from './ui/Card';
-import { calculateDays, formatCurrency } from '@/lib/utils';
-import { createBookingRequest } from '@/app/actions/bookings';
+import { useState } from "react"
+import { useSession } from "next-auth/react"
+import { Input } from "@/components/ui/Input"
+import { Label } from "@/components/ui/Label"
+import { Button } from "@/components/ui/Button"
+import { Textarea } from "@/components/ui/Textarea"
+import { formatPrice } from "@/lib/utils"
+import { createBookingRequest } from "@/app/actions/bookings"
+import type { HomeWithHost } from "@/lib/types"
 
 interface BookingFormProps {
-  homeId: string;
-  maxGuests: number;
+  home: HomeWithHost
 }
 
-export function BookingForm({ homeId, maxGuests }: BookingFormProps) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    startDate: '',
-    endDate: '',
-    guestCount: 2,
-    message: '',
-  });
+export function BookingForm({ home }: BookingFormProps) {
+  const { data: session } = useSession()
+  const [checkIn, setCheckIn] = useState("")
+  const [checkOut, setCheckOut] = useState("")
+  const [guests, setGuests] = useState(1)
+  const [message, setMessage] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState("")
 
-  const days = formData.startDate && formData.endDate 
-    ? calculateDays(new Date(formData.startDate), new Date(formData.endDate))
-    : 0;
-  
-  const pricePerDay = 100; // TODO: Make this configurable
-  const totalAmount = days * pricePerDay;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  function calculateTotalAmount(): number {
+    if (!checkIn || !checkOut) return 0
     
-    if (!formData.startDate || !formData.endDate) {
-      alert('Please select your dates');
-      return;
+    const startDate = new Date(checkIn)
+    const endDate = new Date(checkOut)
+    const nights = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    
+    return nights > 0 ? nights * home.pricePerNight : 0
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    
+    if (!session) {
+      setError("You must be signed in to make a booking request")
+      return
     }
 
-    setLoading(true);
+    if (!checkIn || !checkOut) {
+      setError("Please select check-in and check-out dates")
+      return
+    }
+
+    if (new Date(checkIn) >= new Date(checkOut)) {
+      setError("Check-out date must be after check-in date")
+      return
+    }
+
+    if (guests > home.maxGuests) {
+      setError(`Maximum ${home.maxGuests} guests allowed`)
+      return
+    }
+
+    setIsSubmitting(true)
+    setError("")
 
     try {
       const result = await createBookingRequest({
-        homeId,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
-        guestCount: formData.guestCount,
-        message: formData.message,
-        totalAmount,
-      });
+        homeId: home.id,
+        checkIn,
+        checkOut,
+        guests,
+        message,
+        totalAmount: calculateTotalAmount(),
+      })
 
       if (result.success) {
-        router.push(`/bookings`);
+        // Redirect to booking confirmation or show success message
+        window.location.href = `/bookings/${result.data.id}`
       } else {
-        alert(result.error);
+        setError(result.error)
       }
     } catch (error) {
-      alert('Failed to submit booking request');
+      setError("An unexpected error occurred. Please try again.")
     } finally {
-      setLoading(false);
+      setIsSubmitting(false)
     }
-  };
+  }
+
+  const totalAmount = calculateTotalAmount()
+  const nights = checkIn && checkOut ? 
+    Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)) : 0
 
   return (
-    <Card className="sticky top-4">
+    <div className="bg-white p-6 rounded-lg shadow-md sticky top-8">
+      <div className="mb-4">
+        <span className="text-2xl font-bold">{formatPrice(home.pricePerNight)}</span>
+        <span className="text-gray-600"> / night</span>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="text-center">
-          <p className="text-2xl font-semibold">
-            {formatCurrency(pricePerDay * 100)} <span className="text-base font-normal text-gray-600">per day</span>
-          </p>
-        </div>
-
         <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="checkIn">Check-in</Label>
+            <Input
+              id="checkIn"
+              type="date"
+              value={checkIn}
+              onChange={(e) => setCheckIn(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="checkOut">Check-out</Label>
+            <Input
+              id="checkOut"
+              type="date"
+              value={checkOut}
+              onChange={(e) => setCheckOut(e.target.value)}
+              min={checkIn || new Date().toISOString().split('T')[0]}
+              required
+            />
+          </div>
+        </div>
+
+        <div>
+          <Label htmlFor="guests">Guests</Label>
           <Input
-            label="Check-in"
-            type="date"
-            value={formData.startDate}
-            onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+            id="guests"
+            type="number"
+            min="1"
+            max={home.maxGuests}
+            value={guests}
+            onChange={(e) => setGuests(parseInt(e.target.value))}
             required
-            min={new Date().toISOString().split('T')[0]}
-          />
-          
-          <Input
-            label="Check-out"
-            type="date"
-            value={formData.endDate}
-            onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-            required
-            min={formData.startDate || new Date().toISOString().split('T')[0]}
           />
         </div>
 
-        <Input
-          label="Guests"
-          type="number"
-          min="1"
-          max={maxGuests}
-          value={formData.guestCount}
-          onChange={(e) => setFormData(prev => ({ ...prev, guestCount: parseInt(e.target.value) }))}
-          required
-        />
+        <div>
+          <Label htmlFor="message">Message to Host (Optional)</Label>
+          <Textarea
+            id="message"
+            placeholder="Tell the host about yourself and your planned visit..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={3}
+          />
+        </div>
 
-        <Textarea
-          label="Message to host"
-          value={formData.message}
-          onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-          placeholder="Tell the host about yourself and why you're interested in their space..."
-          rows={3}
-        />
-
-        {days > 0 && (
-          <div className="space-y-2 border-t pt-4">
-            <div className="flex justify-between text-sm">
-              <span>{formatCurrency(pricePerDay * 100)} × {days} days</span>
-              <span>{formatCurrency(totalAmount * 100)}</span>
+        {totalAmount > 0 && (
+          <div className="border-t pt-4">
+            <div className="flex justify-between text-sm text-gray-600 mb-1">
+              <span>{formatPrice(home.pricePerNight)} × {nights} nights</span>
+              <span>{formatPrice(totalAmount)}</span>
             </div>
-            <div className="flex justify-between font-semibold">
+            <div className="flex justify-between font-semibold text-lg">
               <span>Total</span>
-              <span>{formatCurrency(totalAmount * 100)}</span>
+              <span>{formatPrice(totalAmount)}</span>
             </div>
           </div>
         )}
 
-        <Button
-          type="submit"
-          loading={loading}
-          className="w-full"
-          disabled={!formData.startDate || !formData.endDate}
+        {error && (
+          <div className="text-red-600 text-sm">{error}</div>
+        )}
+
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={isSubmitting || !session}
         >
-          Request to Book
+          {isSubmitting ? "Submitting..." : "Request to Book"}
         </Button>
 
-        <p className="text-xs text-gray-500 text-center">
-          You won't be charged yet. The host has 24 hours to respond.
-        </p>
+        {!session && (
+          <p className="text-sm text-gray-600 text-center">
+            You must sign in to make a booking request
+          </p>
+        )}
       </form>
-    </Card>
-  );
+    </div>
+  )
 }
