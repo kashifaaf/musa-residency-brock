@@ -104,7 +104,7 @@ export default function HomePage() {
           <p className="text-xl text-gray-300 mb-8">
             Join our community of artists creating, sharing, and inspiring across the world.
           </p>
-          <Link href="/auth/signin">
+          <Link href="/api/auth/signin">
             <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100">
               Join Musa Residency
             </Button>
