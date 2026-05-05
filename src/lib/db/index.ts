@@ -6,14 +6,16 @@ let db: ReturnType<typeof drizzle> | null = null
 
 export function getDb() {
   if (!db) {
-    const databaseUrl = process.env.DATABASE_URL
-    if (!databaseUrl) {
-      throw new Error("DATABASE_URL environment variable is not set")
+    if (typeof window !== 'undefined') {
+      throw new Error("Database access is not allowed in the browser")
     }
     
-    const sql = neon(databaseUrl)
+    const url = process.env.DATABASE_URL
+    if (!url) {
+      throw new Error("DATABASE_URL environment variable is required")
+    }
+    const sql = neon(url)
     db = drizzle(sql, { schema })
   }
-  
   return db
 }

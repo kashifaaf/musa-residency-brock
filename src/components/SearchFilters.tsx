@@ -1,119 +1,186 @@
 "use client"
 
-import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Input } from "@/components/ui/Input"
-import { Label } from "@/components/ui/Label"
-import { Button } from "@/components/ui/Button"
-import type { SearchFilters } from "@/lib/types"
+import { useState, useEffect } from "react"
 
-interface SearchFiltersProps {
-  initialFilters: SearchFilters
-}
-
-export function SearchFilters({ initialFilters }: SearchFiltersProps) {
+export function SearchFilters() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
-  const [filters, setFilters] = useState<SearchFilters>(initialFilters)
+  const [filters, setFilters] = useState({
+    minPrice: searchParams.get("minPrice") || "",
+    maxPrice: searchParams.get("maxPrice") || "",
+    bedrooms: searchParams.get("bedrooms") || "",
+    bathrooms: searchParams.get("bathrooms") || "",
+    creativeSpace: searchParams.get("creativeSpace") === "true",
+    amenities: searchParams.get("amenities")?.split(",") || [],
+  })
 
-  function handleFilterChange(key: keyof SearchFilters, value: string | number | undefined) {
-    setFilters(prev => ({ ...prev, [key]: value }))
-  }
+  const amenitiesList = [
+    "WiFi", "Kitchen", "Washing Machine", "Air Conditioning", 
+    "Heating", "Parking", "Garden", "Balcony"
+  ]
 
-  function applyFilters() {
-    const params = new URLSearchParams(searchParams)
+  const creativeAmenitiesList = [
+    "Art Studio", "Natural Light", "Easel", "Drawing Table", 
+    "Photography Setup", "Music Room", "Writing Desk", "Pottery Wheel"
+  ]
+
+  const updateURL = () => {
+    const params = new URLSearchParams(searchParams.toString())
     
+    // Keep existing search params
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== "") {
+      if (key === "amenities") {
+        if (Array.isArray(value) && value.length > 0) {
+          params.set(key, value.join(","))
+        } else {
+          params.delete(key)
+        }
+      } else if (key === "creativeSpace") {
+        if (value) {
+          params.set(key, "true")
+        } else {
+          params.delete(key)
+        }
+      } else if (value) {
         params.set(key, value.toString())
       } else {
         params.delete(key)
       }
     })
-    
+
     router.push(`/search?${params.toString()}`)
   }
 
-  function clearFilters() {
-    setFilters({})
-    router.push("/search")
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleAmenityToggle = (amenity: string) => {
+    setFilters(prev => ({
+      ...prev,
+      amenities: prev.amenities.includes(amenity)
+        ? prev.amenities.filter(a => a !== amenity)
+        : [...prev.amenities, amenity]
+    }))
   }
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">Filters</h2>
       
-      <div className="space-y-4">
+      <div className="space-y-6">
+        {/* Price Range */}
         <div>
-          <Label htmlFor="location">Location</Label>
-          <Input
-            id="location"
-            type="text"
-            placeholder="City, country..."
-            value={filters.location || ""}
-            onChange={(e) => handleFilterChange("location", e.target.value)}
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="checkIn">Check-in</Label>
-          <Input
-            id="checkIn"
-            type="date"
-            value={filters.checkIn || ""}
-            onChange={(e) => handleFilterChange("checkIn", e.target.value)}
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="checkOut">Check-out</Label>
-          <Input
-            id="checkOut"
-            type="date"
-            value={filters.checkOut || ""}
-            onChange={(e) => handleFilterChange("checkOut", e.target.value)}
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="guests">Guests</Label>
-          <Input
-            id="guests"
-            type="number"
-            min="1"
-            placeholder="1"
-            value={filters.guests || ""}
-            onChange={(e) => handleFilterChange("guests", e.target.value ? parseInt(e.target.value) : undefined)}
-          />
-        </div>
-        
-        <div>
-          <Label>Price Range (per night)</Label>
-          <div className="grid grid-cols-2 gap-2 mt-1">
-            <Input
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Price per night</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <input
               type="number"
               placeholder="Min"
-              value={filters.minPrice || ""}
-              onChange={(e) => handleFilterChange("minPrice", e.target.value ? parseInt(e.target.value) : undefined)}
+              value={filters.minPrice}
+              onChange={(e) => handleFilterChange("minPrice", e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
             />
-            <Input
+            <input
               type="number"
               placeholder="Max"
-              value={filters.maxPrice || ""}
-              onChange={(e) => handleFilterChange("maxPrice", e.target.value ? parseInt(e.target.value) : undefined)}
+              value={filters.maxPrice}
+              onChange={(e) => handleFilterChange("maxPrice", e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
             />
           </div>
         </div>
-        
-        <div className="space-y-2 pt-4">
-          <Button onClick={applyFilters} className="w-full">
-            Apply Filters
-          </Button>
-          <Button onClick={clearFilters} variant="outline" className="w-full">
-            Clear All
-          </Button>
+
+        {/* Rooms */}
+        <div>
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Bedrooms</h3>
+          <select
+            value={filters.bedrooms}
+            onChange={(e) => handleFilterChange("bedrooms", e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+          >
+            <option value="">Any</option>
+            <option value="1">1+</option>
+            <option value="2">2+</option>
+            <option value="3">3+</option>
+            <option value="4">4+</option>
+          </select>
         </div>
+
+        <div>
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Bathrooms</h3>
+          <select
+            value={filters.bathrooms}
+            onChange={(e) => handleFilterChange("bathrooms", e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+          >
+            <option value="">Any</option>
+            <option value="1">1+</option>
+            <option value="2">2+</option>
+            <option value="3">3+</option>
+          </select>
+        </div>
+
+        {/* Creative Space */}
+        <div>
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={filters.creativeSpace}
+              onChange={(e) => handleFilterChange("creativeSpace", e.target.checked)}
+              className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+            />
+            <span className="ml-2 text-sm font-medium text-gray-700">
+              Creative Space Available
+            </span>
+          </label>
+        </div>
+
+        {/* Amenities */}
+        <div>
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Amenities</h3>
+          <div className="space-y-2">
+            {amenitiesList.map((amenity) => (
+              <label key={amenity} className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={filters.amenities.includes(amenity)}
+                  onChange={() => handleAmenityToggle(amenity)}
+                  className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-sm text-gray-700">{amenity}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Creative Amenities */}
+        {filters.creativeSpace && (
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Creative Amenities</h3>
+            <div className="space-y-2">
+              {creativeAmenitiesList.map((amenity) => (
+                <label key={amenity} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={filters.amenities.includes(amenity)}
+                    onChange={() => handleAmenityToggle(amenity)}
+                    className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">{amenity}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={updateURL}
+          className="w-full bg-orange-600 text-white py-2 px-4 rounded-md hover:bg-orange-700 transition-colors"
+        >
+          Apply Filters
+        </button>
       </div>
     </div>
   )
