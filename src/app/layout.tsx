@@ -1,12 +1,16 @@
 import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import { Providers } from "@/components/Providers"
+import { Header } from "@/components/Header"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
-import { Providers } from "@/components/Providers"
 import "./globals.css"
 
+const inter = Inter({ subsets: ["latin"] })
+
 export const metadata: Metadata = {
-  title: "Musa Residency - Creative Home Exchange",
-  description: "Connect with artists worldwide through authentic home exchanges designed for creative minds.",
+  title: "Musa Residency - Home Exchange for Artists",
+  description: "Connect with artists worldwide through specialized home exchange platform. Find inspiring creative spaces for your next residency.",
 }
 
 export default function RootLayout({
@@ -16,12 +20,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      <body className={`${inter.className} bg-gray-50 min-h-screen`}>
         <Providers>
-          {children}
-          <Analytics />
-          <SpeedInsights />
+          <Header />
+          <main>{children}</main>
         </Providers>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )

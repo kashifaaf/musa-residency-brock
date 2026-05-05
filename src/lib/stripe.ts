@@ -2,17 +2,18 @@ import Stripe from "stripe"
 
 let stripe: Stripe | null = null
 
-export function getStripe() {
+function getStripe() {
   if (!stripe) {
     const secretKey = process.env.STRIPE_SECRET_KEY
     if (!secretKey) {
-      throw new Error("STRIPE_SECRET_KEY environment variable is not set")
+      throw new Error("STRIPE_SECRET_KEY is not set")
     }
     
     stripe = new Stripe(secretKey, {
-      apiVersion: "2024-06-20",
+      apiVersion: "2024-12-18.acacia",
     })
   }
-  
   return stripe
 }
+
+export { getStripe }

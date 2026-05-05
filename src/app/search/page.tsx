@@ -1,74 +1,101 @@
 import { Suspense } from "react"
-import { Header } from "@/components/Header"
-import { SearchResults } from "@/components/SearchResults"
-import { SearchFilters } from "@/components/SearchFilters"
+import { SearchForm } from "@/components/SearchForm"
+import { HomeCard } from "@/components/HomeCard"
+import { db } from "@/lib/db"
+import { homes, availability } from "@/lib/db/schema"
+import { eq, and, gte, lte, like } from "drizzle-orm"
+import type { SearchParams } from "@/types"
 
 interface SearchPageProps {
-  searchParams?: {
-    location?: string
-    checkin?: string
-    checkout?: string
-    guests?: string
-    minPrice?: string
-    maxPrice?: string
-    bedrooms?: string
-    bathrooms?: string
-    creativeSpace?: string
-    amenities?: string
-  }
+  searchParams: Promise<SearchParams>
 }
 
-export default function SearchPage({ searchParams }: SearchPageProps) {
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Find Your Perfect Creative Space
-          </h1>
-          <p className="text-gray-600">
-            Discover inspiring homes from our global artist community
-          </p>
-        </div>
+async function SearchResults({ searchParams }: { searchParams: SearchParams }) {
+  let whereConditions = [eq(homes.isActive, true)]
+  
+  // Filter by location if provided
+  if (searchParams.location) {
+    whereConditions.push(like(homes.location, `%${searchParams.location}%`))
+  }
+  
+  let availableHomes = await db
+    .select()
+    .from(homes)
+    .where(and(...whereConditions))
+    .limit(20)
+  
+  // Filter by date availability if dates are provided
+  if (searchParams.startDate && searchParams.endDate) {
+    const startDate = new Date(searchParams.startDate)
+    const endDate = new Date(searchParams.endDate)
+    
+    const availableHomeIds = await db
+      .select({ homeId: availability.homeId })
+      .from(availability)
+      .where(
+        and(
+          eq(availability.isAvailable, true),
+          lte(availability.startDate, startDate),
+          gte(availability.endDate, endDate)
+        )
+      )
+    
+    const availableIds = availableHomeIds.map(a => a.homeId)
+    availableHomes = availableHomes.filter(home => availableIds.includes(home.id))
+  }
+  
+  // Filter by guest count if provided
+  if (searchParams.guests) {
+    const guestCount = parseInt(searchParams.guests)
+    availableHomes = availableHomes.filter(home => home.maxGuests >= guestCount)
+  }
 
-        <div className="lg:grid lg:grid-cols-4 lg:gap-8">
-          <div className="lg:col-span-1">
-            <SearchFilters />
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">
+          {availableHomes.length} home{availableHomes.length !== 1 ? "s" : ""} found
+        </h2>
+        
+        {(searchParams.location || searchParams.startDate || searchParams.endDate) && (
+          <div className="text-sm text-gray-600">
+            {searchParams.location && `in ${searchParams.location}`}
+            {searchParams.startDate && searchParams.endDate && 
+              ` for ${new Date(searchParams.startDate).toLocaleDateString()} - ${new Date(searchParams.endDate).toLocaleDateString()}`
+            }
           </div>
-          
-          <div className="lg:col-span-3 mt-8 lg:mt-0">
-            <Suspense fallback={<SearchResultsSkeleton />}>
-              <SearchResults searchParams={searchParams} />
-            </Suspense>
-          </div>
+        )}
+      </div>
+      
+      {availableHomes.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {availableHomes.map((home) => (
+            <HomeCard key={home.id} home={home} />
+          ))}
         </div>
-      </main>
+      ) : (
+        <div className="text-center py-12">
+          <p className="text-gray-500 mb-4">No homes found matching your criteria.</p>
+          <p className="text-gray-400">Try adjusting your search filters or dates.</p>
+        </div>
+      )}
     </div>
   )
 }
 
-function SearchResultsSkeleton() {
+export default async function SearchPage({ searchParams }: SearchPageProps) {
+  const params = await searchParams
+  
   return (
-    <div className="space-y-6">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
-        <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
-          <div className="md:flex">
-            <div className="md:w-1/3">
-              <div className="h-48 md:h-full bg-gray-200"></div>
-            </div>
-            <div className="md:w-2/3 p-6">
-              <div className="h-4 bg-gray-200 rounded mb-2"></div>
-              <div className="h-3 bg-gray-200 rounded mb-4 w-2/3"></div>
-              <div className="space-y-2">
-                <div className="h-3 bg-gray-200 rounded"></div>
-                <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Find Your Perfect Creative Space</h1>
+        <SearchForm />
+      </div>
+      
+      <Suspense fallback={<div>Loading homes...</div>}>
+        <SearchResults searchParams={params} />
+      </Suspense>
     </div>
   )
 }

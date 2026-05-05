@@ -1,44 +1,54 @@
-import { pgTable, uuid, varchar, text, timestamp, boolean, integer, jsonb } from "drizzle-orm/pg-core"
+import { pgTable, text, timestamp, decimal, boolean, uuid, integer } from "drizzle-orm/pg-core"
 
 export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  name: varchar("name", { length: 255 }).notNull(),
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name").notNull(),
   image: text("image"),
   bio: text("bio"),
-  location: varchar("location", { length: 255 }),
+  location: text("location"),
   workInfo: text("work_info"),
-  socialMedia: jsonb("social_media").$type<{ [platform: string]: string }>(),
+  socialMediaUrl: text("social_media_url"),
   emailVerified: timestamp("email_verified"),
-  isArtist: boolean("is_artist").default(false),
-  artistInfo: jsonb("artist_info").$type<{
-    medium?: string[]
-    portfolio?: string
-    statement?: string
-    experience?: string
-  }>(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+})
+
+export const accounts = pgTable("accounts", {
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  provider: text("provider").notNull(),
+  providerAccountId: text("provider_account_id").notNull(),
+  refreshToken: text("refresh_token"),
+  accessToken: text("access_token"),
+  expiresAt: integer("expires_at"),
+  tokenType: text("token_type"),
+  scope: text("scope"),
+  idToken: text("id_token"),
+  sessionState: text("session_state"),
+})
+
+export const sessions = pgTable("sessions", {
+  sessionToken: text("session_token").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires").notNull(),
 })
 
 export const homes = pgTable("homes", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  title: varchar("title", { length: 255 }).notNull(),
+  hostId: text("host_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
   description: text("description").notNull(),
-  location: varchar("location", { length: 255 }).notNull(),
+  location: text("location").notNull(),
+  pricePerNight: decimal("price_per_night", { precision: 10, scale: 2 }).notNull(),
+  maxGuests: integer("max_guests").notNull(),
   bedrooms: integer("bedrooms").notNull(),
   bathrooms: integer("bathrooms").notNull(),
-  maxGuests: integer("max_guests").notNull(),
-  amenities: jsonb("amenities").$type<string[]>().default([]),
-  houseRules: text("house_rules"),
-  photos: jsonb("photos").$type<string[]>().default([]),
-  pricePerNight: integer("price_per_night").notNull(),
-  isActive: boolean("is_active").default(true),
-  creativeSpace: boolean("creative_space").default(false),
-  creativeAmenities: jsonb("creative_amenities").$type<string[]>().default([]),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  amenities: text("amenities").array(),
+  images: text("images").array().notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 })
 
 export const availability = pgTable("availability", {
@@ -46,31 +56,25 @@ export const availability = pgTable("availability", {
   homeId: uuid("home_id").notNull().references(() => homes.id, { onDelete: "cascade" }),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  isAvailable: boolean("is_available").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 })
 
 export const bookings = pgTable("bookings", {
   id: uuid("id").primaryKey().defaultRandom(),
-  homeId: uuid("home_id").notNull().references(() => homes.id, { onDelete: "cascade" }),
-  guestId: uuid("guest_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  hostId: uuid("host_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  homeId: uuid("home_id").notNull().references(() => homes.id),
+  guestId: text("guest_id").notNull().references(() => users.id),
+  hostId: text("host_id").notNull().references(() => users.id),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
-  totalPrice: integer("total_price").notNull(),
-  status: varchar("status", { length: 50 }).notNull().default("pending"),
-  guestMessage: text("guest_message"),
-  hostResponse: text("host_response"),
-  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-})
-
-export const messages = pgTable("messages", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  bookingId: uuid("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
-  senderId: uuid("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  content: text("content").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").notNull().default("pending"), // pending, approved, rejected, cancelled, completed
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  requestMessage: text("request_message"),
+  responseMessage: text("response_message"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  respondedAt: timestamp("responded_at"),
 })
 
 export type User = typeof users.$inferSelect
@@ -81,5 +85,3 @@ export type Booking = typeof bookings.$inferSelect
 export type NewBooking = typeof bookings.$inferInsert
 export type Availability = typeof availability.$inferSelect
 export type NewAvailability = typeof availability.$inferInsert
-export type Message = typeof messages.$inferSelect
-export type NewMessage = typeof messages.$inferInsert

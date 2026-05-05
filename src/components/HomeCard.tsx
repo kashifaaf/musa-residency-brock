@@ -1,73 +1,62 @@
 import Link from "next/link"
 import Image from "next/image"
+import { Home } from "@/lib/db/schema"
+import { formatCurrency } from "@/lib/utils"
 import { MapPin, Users, Bed, Bath } from "lucide-react"
-import { formatPrice } from "@/lib/utils"
-import type { HomeWithHost } from "@/lib/types"
 
 interface HomeCardProps {
-  home: HomeWithHost
+  home: Home
 }
 
 export function HomeCard({ home }: HomeCardProps) {
-  const mainPhoto = home.photos?.[0] || "/placeholder-home.jpg"
-  
   return (
-    <Link href={`/homes/${home.id}`} className="group">
+    <Link href={`/homes/${home.id}`} className="block group">
       <div className="bg-white rounded-lg shadow-md overflow-hidden transition-shadow group-hover:shadow-lg">
-        <div className="aspect-video relative">
+        <div className="relative h-64">
           <Image
-            src={mainPhoto}
+            src={home.images[0] || "/placeholder-home.jpg"}
             alt={home.title}
             fill
             className="object-cover"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         </div>
         
         <div className="p-4">
-          <div className="flex items-start justify-between mb-2">
-            <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
-              {home.title}
-            </h3>
-            <span className="text-lg font-bold text-gray-900">
-              {formatPrice(home.pricePerNight)}
-              <span className="text-sm font-normal text-gray-500">/night</span>
-            </span>
+          <div className="flex items-center text-sm text-gray-600 mb-2">
+            <MapPin size={16} className="mr-1" />
+            {home.location}
           </div>
           
-          <div className="flex items-center text-gray-600 mb-2">
-            <MapPin className="w-4 h-4 mr-1" />
-            <span className="text-sm">{home.city}, {home.country}</span>
-          </div>
+          <h3 className="font-semibold text-lg text-gray-900 mb-2 group-hover:text-red-600 transition-colors">
+            {home.title}
+          </h3>
           
-          <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-            <div className="flex items-center">
-              <Users className="w-4 h-4 mr-1" />
-              <span>{home.maxGuests} guests</span>
-            </div>
-            <div className="flex items-center">
-              <Bed className="w-4 h-4 mr-1" />
-              <span>{home.bedrooms} bed</span>
-            </div>
-            <div className="flex items-center">
-              <Bath className="w-4 h-4 mr-1" />
-              <span>{home.bathrooms} bath</span>
-            </div>
-          </div>
+          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+            {home.description}
+          </p>
           
-          <div className="flex items-center">
-            {home.host.image && (
-              <Image
-                src={home.host.image}
-                alt={home.host.name}
-                width={24}
-                height={24}
-                className="rounded-full mr-2"
-              />
-            )}
-            <span className="text-sm text-gray-600">
-              Hosted by {home.host.name}
-            </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4 text-sm text-gray-600">
+              <div className="flex items-center">
+                <Users size={16} className="mr-1" />
+                {home.maxGuests}
+              </div>
+              <div className="flex items-center">
+                <Bed size={16} className="mr-1" />
+                {home.bedrooms}
+              </div>
+              <div className="flex items-center">
+                <Bath size={16} className="mr-1" />
+                {home.bathrooms}
+              </div>
+            </div>
+            
+            <div className="text-right">
+              <div className="text-lg font-semibold text-gray-900">
+                {formatCurrency(Number(home.pricePerNight))}
+              </div>
+              <div className="text-sm text-gray-600">per night</div>
+            </div>
           </div>
         </div>
       </div>
