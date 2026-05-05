@@ -5,24 +5,22 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number | string): string {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-  }).format(num);
+  }).format(amount);
 }
 
 export function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    year: 'numeric',
+  return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
-  });
+    year: 'numeric',
+  }).format(date);
 }
 
 export function calculateNights(startDate: Date, endDate: Date): number {
-  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+  const diffTime = endDate.getTime() - startDate.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }

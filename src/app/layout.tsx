@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { Header } from '@/components/layout/header';
 import './globals.css';
+import { Toaster } from '@/components/ui/toaster';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Musa Residency',
-  description: 'Cultural home exchange platform for creative professionals',
+  title: 'Musa Residency - Home Exchange for Creatives',
+  description: 'Connect with artists worldwide through our specialized home exchange platform designed for the creative community.',
 };
 
 export default function RootLayout({
@@ -18,10 +18,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="min-h-screen bg-background">
-          <Header />
-          <main>{children}</main>
-        </div>
+        {children}
+        <Toaster />
       </body>
     </html>
   );

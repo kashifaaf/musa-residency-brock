@@ -1,63 +1,111 @@
-import { searchHomes } from '@/lib/actions/homes';
-import { SearchForm } from '@/components/homes/search-form';
-import { HomeCard } from '@/components/homes/home-card';
+import { getDb } from '@/lib/db';
+import { homes, users, availability } from '@/lib/db/schema';
+import { eq, and, gte, lte, ilike } from 'drizzle-orm';
+import { SearchForm } from '@/components/search/search-form';
+import { SearchResults } from '@/components/search/search-results';
+import type { SearchParams } from '@/lib/types';
 
 interface SearchPageProps {
-  searchParams: Promise<{
-    location?: string;
-    startDate?: string;
-    endDate?: string;
-  }>;
+  searchParams: Promise<SearchParams>;
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
-  const { location, startDate, endDate } = params;
+  const db = getDb();
 
-  const startDateObj = startDate ? new Date(startDate) : undefined;
-  const endDateObj = endDate ? new Date(endDate) : undefined;
+  let query = db
+    .select({
+      id: homes.id,
+      hostId: homes.hostId,
+      title: homes.title,
+      description: homes.description,
+      location: homes.location,
+      pricePerNight: homes.pricePerNight,
+      bedrooms: homes.bedrooms,
+      bathrooms: homes.bathrooms,
+      maxGuests: homes.maxGuests,
+      amenities: homes.amenities,
+      photos: homes.photos,
+      isActive: homes.isActive,
+      createdAt: homes.createdAt,
+      updatedAt: homes.updatedAt,
+      host: {
+        id: users.id,
+        name: users.name,
+        profilePhoto: users.profilePhoto,
+      },
+    })
+    .from(homes)
+    .innerJoin(users, eq(homes.hostId, users.id))
+    .where(eq(homes.isActive, true));
 
-  const result = await searchHomes(location, startDateObj, endDateObj);
-  const homes = result.success ? result.data : [];
+  // Apply location filter
+  if (params.location) {
+    query = query.where(
+      and(
+        eq(homes.isActive, true),
+        ilike(homes.location, `%${params.location}%`)
+      )
+    );
+  }
+
+  // Apply guest count filter
+  if (params.guests) {
+    const guestCount = parseInt(params.guests);
+    query = query.where(
+      and(
+        eq(homes.isActive, true),
+        gte(homes.maxGuests, guestCount)
+      )
+    );
+  }
+
+  const results = await query;
+
+  // Filter by date availability if dates are provided
+  let availableHomes = results;
+  if (params.startDate && params.endDate) {
+    const startDate = new Date(params.startDate);
+    const endDate = new Date(params.endDate);
+
+    const availabilityData = await db
+      .select({ homeId: availability.homeId })
+      .from(availability)
+      .where(
+        and(
+          lte(availability.startDate, startDate),
+          gte(availability.endDate, endDate),
+          eq(availability.isBooked, false)
+        )
+      );
+
+    const availableHomeIds = new Set(availabilityData.map(a => a.homeId));
+    availableHomes = results.filter(home => availableHomeIds.has(home.id));
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-6">Find Your Perfect Stay</h1>
-        <div className="bg-white p-6 rounded-lg border shadow-sm">
-          <SearchForm />
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <SearchForm initialValues={params} />
         </div>
       </div>
-
-      {location && (
+      
+      <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold">
-            {homes.length} homes found
-            {location && ` in "${location}"`}
-            {startDate && endDate && ` from ${startDate} to ${endDate}`}
-          </h2>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {availableHomes.length > 0 
+              ? `${availableHomes.length} homes found`
+              : 'No homes found'
+            }
+          </h1>
+          {params.location && (
+            <p className="text-gray-600">in {params.location}</p>
+          )}
         </div>
-      )}
-
-      {homes.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-semibold mb-2">No homes found</h3>
-          <p className="text-muted-foreground mb-4">
-            Try adjusting your search criteria or browse all available homes.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {homes.map((home) => (
-            <HomeCard key={home.id} home={home} />
-          ))}
-        </div>
-      )}
+        
+        <SearchResults homes={availableHomes} />
+      </div>
     </div>
   );
 }

@@ -1,47 +1,70 @@
-export type ActionResult<T> = 
-  | { success: true; data: T }
-  | { success: false; error: string };
+export interface ActionResult<T> {
+  success: true;
+  data: T;
+}
 
-export interface HomeWithHost {
+export interface ActionError {
+  success: false;
+  error: string;
+}
+
+export type ActionResponse<T> = ActionResult<T> | ActionError;
+
+export interface User {
   id: string;
+  email: string;
+  name: string;
+  bio?: string;
+  location?: string;
+  workInfo?: string;
+  socialMedia?: string;
+  profilePhoto?: string;
+  emailVerified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Home {
+  id: string;
+  hostId: string;
   title: string;
   description: string;
   location: string;
+  pricePerNight: string;
+  bedrooms: number;
+  bathrooms: number;
   maxGuests: number;
-  amenities: string[];
-  photos: string[];
-  host: {
-    id: string;
-    name: string;
-    profilePhoto: string | null;
-  };
-  availability: Array<{
-    startDate: Date;
-    endDate: Date;
-  }>;
+  amenities: string[] | null;
+  photos: string[] | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  host?: User;
 }
 
-export interface BookingRequestWithDetails {
+export interface BookingRequest {
   id: string;
+  homeId: string;
+  guestId: string;
+  hostId: string;
   startDate: Date;
   endDate: Date;
+  totalPrice: string;
   guestCount: number;
-  message: string | null;
-  status: string;
-  totalAmount: number | null;
-  guest: {
-    id: string;
-    name: string;
-    email: string;
-    bio: string | null;
-    location: string | null;
-    workInfo: string | null;
-    socialMedia: string | null;
-    profilePhoto: string | null;
-  };
-  home: {
-    id: string;
-    title: string;
-    location: string;
-  };
+  message?: string;
+  status: 'pending' | 'approved' | 'declined' | 'paid' | 'cancelled';
+  paymentIntentId?: string;
+  hostResponseDeadline: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  home?: Home;
+  guest?: User;
+  host?: User;
+}
+
+export interface SearchParams {
+  location?: string;
+  startDate?: string;
+  endDate?: string;
+  guests?: string;
 }

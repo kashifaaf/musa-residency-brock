@@ -1,89 +1,104 @@
 import { notFound } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { getDb } from '@/lib/db';
-import { homes, users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { HomeDetails } from '@/components/HomeDetails';
-import { BookingForm } from '@/components/BookingForm';
-import { HomeWithHost } from '@/lib/types';
+import { homes, users, availability } from '@/lib/db/schema';
+import { eq, and, gte } from 'drizzle-orm';
+import { HomeDetails } from '@/components/homes/home-details';
+import { BookingForm } from '@/components/bookings/booking-form';
+import { getSession } from '@/lib/session';
 
 interface HomePageProps {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }>;
 }
 
 export default async function HomePage({ params }: HomePageProps) {
-  const session = await getServerSession(authOptions);
+  const { id } = await params;
+  const session = await getSession();
   const db = getDb();
 
-  const [result] = await db
+  const homeData = await db
     .select({
-      home: homes,
+      id: homes.id,
+      hostId: homes.hostId,
+      title: homes.title,
+      description: homes.description,
+      location: homes.location,
+      pricePerNight: homes.pricePerNight,
+      bedrooms: homes.bedrooms,
+      bathrooms: homes.bathrooms,
+      maxGuests: homes.maxGuests,
+      amenities: homes.amenities,
+      photos: homes.photos,
+      isActive: homes.isActive,
+      createdAt: homes.createdAt,
+      updatedAt: homes.updatedAt,
       host: {
         id: users.id,
         name: users.name,
-        email: users.email,
         bio: users.bio,
         location: users.location,
         profilePhoto: users.profilePhoto,
+        createdAt: users.createdAt,
       },
     })
     .from(homes)
     .innerJoin(users, eq(homes.hostId, users.id))
-    .where(eq(homes.id, params.id))
+    .where(eq(homes.id, id))
     .limit(1);
 
-  if (!result) {
+  if (!homeData.length || !homeData[0].isActive) {
     notFound();
   }
 
-  const home: HomeWithHost = {
-    id: result.home.id,
-    title: result.home.title,
-    description: result.home.description,
-    location: result.home.location,
-    maxGuests: result.home.maxGuests,
-    amenities: result.home.amenities ? JSON.parse(result.home.amenities) : [],
-    photos: result.home.photos ? JSON.parse(result.home.photos) : [],
-    host: {
-      id: result.host.id,
-      name: result.host.name,
-      profilePhoto: result.host.profilePhoto,
-    },
-    availability: [], // TODO: Load actual availability
-  };
+  const home = homeData[0];
 
-  // Check if current user is the host
-  const isHost = session?.user?.email === result.host.email;
+  // Get available dates
+  const availableDates = await db
+    .select({
+      startDate: availability.startDate,
+      endDate: availability.endDate,
+    })
+    .from(availability)
+    .where(
+      and(
+        eq(availability.homeId, id),
+        eq(availability.isBooked, false),
+        gte(availability.endDate, new Date())
+      )
+    );
+
+  const canBook = session && session.userId !== home.hostId;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <HomeDetails home={home} host={result.host} />
-        </div>
-        
-        <div className="lg:col-span-1">
-          {!isHost && session ? (
-            <BookingForm homeId={home.id} maxGuests={home.maxGuests} />
-          ) : !session ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-6">
-              <p className="text-center text-gray-600">
-                <a href="/auth/signin" className="text-blue-600 hover:underline">
-                  Sign in
-                </a>{' '}
-                to book this home.
-              </p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <HomeDetails home={home} />
+          </div>
+          
+          <div className="lg:col-span-1">
+            <div className="sticky top-8">
+              {canBook ? (
+                <BookingForm 
+                  home={home} 
+                  availableDates={availableDates}
+                  currentUserId={session.userId}
+                />
+              ) : (
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold mb-2">${home.pricePerNight}</p>
+                    <p className="text-gray-600 mb-4">per night</p>
+                    {!session ? (
+                      <p className="text-gray-600">Please log in to book this home</p>
+                    ) : (
+                      <p className="text-gray-600">You cannot book your own home</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="rounded-lg border border-gray-200 bg-white p-6">
-              <p className="text-center text-gray-600">
-                This is your listing. You cannot book your own home.
-              </p>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

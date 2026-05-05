@@ -1,60 +1,58 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { formatCurrency } from '@/lib/utils';
+import type { Home } from '@/lib/types';
 
 interface HomeCardProps {
-  home: {
-    id: string;
-    title: string;
-    description: string;
-    location: string;
-    pricePerNight: string;
-    maxGuests: number;
-    photos: Array<{ url: string }>;
-    hostName: string;
-  };
+  home: Home & { host?: { id: string; name: string; profilePhoto?: string } };
 }
 
 export function HomeCard({ home }: HomeCardProps) {
-  const primaryPhoto = home.photos[0]?.url || '/placeholder-home.jpg';
-  
+  const mainPhoto = home.photos?.[0] || '/placeholder-home.jpg';
+
   return (
-    <Link href={`/homes/${home.id}`} className="block group">
-      <div className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
-        <div className="relative aspect-video overflow-hidden rounded-t-lg">
+    <Link href={`/homes/${home.id}`} className="group">
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden hover:shadow-md transition-shadow">
+        <div className="aspect-[4/3] relative">
           <Image
-            src={primaryPhoto}
+            src={mainPhoto}
             alt={home.title}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-200"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         </div>
         
         <div className="p-4">
-          <div className="flex items-start justify-between mb-2">
-            <div className="min-w-0 flex-1">
-              <h3 className="font-semibold text-lg truncate">{home.title}</h3>
-              <p className="text-sm text-muted-foreground">{home.location}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-semibold">{formatCurrency(home.pricePerNight)}</p>
-              <p className="text-sm text-muted-foreground">per night</p>
-            </div>
-          </div>
-          
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-            {home.description}
-          </p>
-          
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              Up to {home.maxGuests} guests
-            </span>
-            <span className="text-muted-foreground">
-              Host: {home.hostName}
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-gray-900 truncate">{home.title}</h3>
+            <span className="text-sm text-gray-500">
+              {formatCurrency(parseFloat(home.pricePerNight))}/night
             </span>
           </div>
+          
+          <p className="text-gray-600 text-sm mb-3 line-clamp-2">{home.location}</p>
+          
+          <div className="flex items-center justify-between text-sm text-gray-500">
+            <span>{home.bedrooms} bed • {home.bathrooms} bath</span>
+            <span>Up to {home.maxGuests} guests</span>
+          </div>
+          
+          {home.host && (
+            <div className="mt-3 pt-3 border-t flex items-center">
+              <div className="w-6 h-6 bg-gray-300 rounded-full mr-2">
+                {home.host.profilePhoto && (
+                  <Image
+                    src={home.host.profilePhoto}
+                    alt={home.host.name}
+                    width={24}
+                    height={24}
+                    className="rounded-full"
+                  />
+                )}
+              </div>
+              <span className="text-xs text-gray-600">Hosted by {home.host.name}</span>
+            </div>
+          )}
         </div>
       </div>
     </Link>
