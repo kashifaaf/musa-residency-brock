@@ -1,3 +1,7 @@
-import { handlers } from "@/lib/auth"
+import { invalidateSession } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
 
-export const { GET, POST } = handlers
+export async function GET() {
+  await invalidateSession();
+  redirect("/");
+}

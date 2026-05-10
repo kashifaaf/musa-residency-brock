@@ -1,20 +1,34 @@
-import { drizzle } from "drizzle-orm/neon-serverless"
-import { Pool } from "@neondatabase/serverless"
-import * as schema from "./schema"
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import * as schema from "./schema";
 
-let db: ReturnType<typeof drizzle> | null = null
+let db: ReturnType<typeof drizzle> | null = null;
+let connection: postgres.Sql | null = null;
 
-function getDb() {
+export function getDb() {
   if (!db) {
-    const connectionString = process.env.DATABASE_URL
-    if (!connectionString) {
-      throw new Error("DATABASE_URL is not set")
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL is not set");
     }
     
-    const pool = new Pool({ connectionString })
-    db = drizzle(pool, { schema })
+    connection = postgres(process.env.DATABASE_URL, {
+      max: 10,
+      idle_timeout: 20,
+      connect_timeout: 10,
+    });
+    
+    db = drizzle(connection, { schema });
   }
-  return db
+  
+  return db;
 }
 
-export { getDb }
+export async function closeDb() {
+  if (connection) {
+    await connection.end();
+    connection = null;
+    db = null;
+  }
+}
+
+export { schema };

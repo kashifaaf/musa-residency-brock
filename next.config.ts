@@ -1,15 +1,23 @@
-import type { NextConfig } from "next"
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@neondatabase/serverless"],
+  reactStrictMode: true,
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**",
+        hostname: "utfs.io",
+      },
+      {
+        protocol: "https",
+        hostname: "uploadthing.com",
       },
     ],
   },
-}
+  serverExternalPackages: ["@node-rs/argon2"],
+  experimental: {
+    typedRoutes: true,
+  },
+};
 
-export default nextConfig
+export default nextConfig;

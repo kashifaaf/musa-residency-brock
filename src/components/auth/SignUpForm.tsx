@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "@/actions/auth";
+import { signUp } from "@/actions/auth";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
 
-export function SignInForm() {
+export function SignUpForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,7 @@ export function SignInForm() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const result = await signIn(formData);
+    const result = await signUp(formData);
 
     if (!result.success) {
       setError(result.error);
@@ -31,6 +31,18 @@ export function SignInForm() {
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
+      <div>
+        <Label htmlFor="name">Full Name</Label>
+        <Input
+          id="name"
+          name="name"
+          type="text"
+          required
+          className="mt-1"
+          placeholder="John Doe"
+        />
+      </div>
+
       <div>
         <Label htmlFor="email">Email Address</Label>
         <Input
@@ -52,6 +64,7 @@ export function SignInForm() {
           required
           className="mt-1"
           placeholder="••••••••"
+          minLength={8}
         />
       </div>
 
@@ -62,7 +75,7 @@ export function SignInForm() {
       )}
 
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Signing in..." : "Sign In"}
+        {loading ? "Creating account..." : "Create Account"}
       </Button>
     </form>
   );

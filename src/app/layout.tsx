@@ -1,33 +1,36 @@
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import { Providers } from "@/components/Providers"
-import { Header } from "@/components/Header"
-import { Analytics } from "@vercel/analytics/react"
-import { SpeedInsights } from "@vercel/speed-insights/next"
-import "./globals.css"
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Providers } from "@/components/Providers";
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
-  title: "Musa Residency - Home Exchange for Artists",
-  description: "Connect with artists worldwide through specialized home exchange platform. Find inspiring creative spaces for your next residency.",
-}
+  title: "Musa Residency - Artist Home Exchange Platform",
+  description: "Connect with artists worldwide through creative space exchanges. Find inspiring residencies and share your artistic home with fellow creators.",
+  keywords: ["artist residency", "home exchange", "creative spaces", "artist community"],
+  openGraph: {
+    title: "Musa Residency - Artist Home Exchange Platform",
+    description: "Connect with artists worldwide through creative space exchanges",
+    type: "website",
+  },
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-gray-50 min-h-screen`}>
+    <html lang="en" className={inter.variable}>
+      <body className="min-h-screen bg-background font-sans antialiased">
         <Providers>
-          <Header />
-          <main>{children}</main>
+          {children}
         </Providers>
-        <Analytics />
-        <SpeedInsights />
       </body>
     </html>
-  )
+  );
 }

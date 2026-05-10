@@ -1,25 +1,33 @@
-import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth/config';
-import { SignUpForm } from '@/components/auth/signup-form';
-import Link from 'next/link';
+import { redirect } from "next/navigation";
+import { validateRequest } from "@/lib/auth/session";
+import { SignUpForm } from "@/components/auth/SignUpForm";
+import Link from "next/link";
 
 export default async function SignUpPage() {
-  const session = await auth();
-  
-  if (session?.user) {
-    redirect('/');
+  const { user } = await validateRequest();
+
+  if (user) {
+    redirect("/dashboard");
   }
 
   return (
-    <div className="container mx-auto px-4 py-16">
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+    <div className="flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-bold tracking-tight">
+            Create your account
+          </h2>
+          <p className="mt-2 text-center text-sm text-muted-foreground">
+            Or{" "}
+            <Link
+              href="/auth/signin"
+              className="font-medium text-primary hover:text-primary/80"
+            >
+              sign in to your existing account
+            </Link>
+          </p>
+        </div>
         <SignUpForm />
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          Already have an account?{' '}
-          <Link href="/auth/signin" className="text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
       </div>
     </div>
   );

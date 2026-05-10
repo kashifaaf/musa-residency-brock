@@ -1,119 +1,210 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/Button"
-import { updateProfile } from "@/actions/profile"
-import type { User } from "@/types"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { updateProfile } from "@/actions/profile";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { Select } from "@/components/ui/Select";
+import { Label } from "@/components/ui/Label";
+import { Button } from "@/components/ui/Button";
+import { User, ArtistType } from "@/types";
 
 interface ProfileFormProps {
-  user: User
+  user: User;
 }
 
 export function ProfileForm({ user }: ProfileFormProps) {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (formData: FormData) => {
-    setIsLoading(true)
-    setError("")
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
 
-    const result = await updateProfile(formData)
-    
-    if (result.success) {
-      router.refresh()
-    } else {
-      setError(result.error)
+    const formData = new FormData(e.currentTarget);
+    const result = await updateProfile(formData);
+
+    if (!result.success) {
+      setError(result.error);
+      setLoading(false);
+      return;
     }
-    
-    setIsLoading(false)
+
+    router.refresh();
+    setLoading(false);
   }
 
   return (
-    <form action={handleSubmit} className="space-y-6">
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-red-800">{error}</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-            Name
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            defaultValue={user.name || ""}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="location" className="block text-sm font-medium text-gray-700">
-            Location
-          </label>
-          <input
-            type="text"
-            id="location"
-            name="location"
-            defaultValue={user.location || ""}
-            placeholder="City, Country"
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-          />
-        </div>
+    <form className="space-y-6" onSubmit={handleSubmit}>
+      <div>
+        <Label htmlFor="name">Name</Label>
+        <Input
+          id="name"
+          name="name"
+          type="text"
+          defaultValue={user.name || ""}
+          className="mt-1"
+        />
       </div>
 
       <div>
-        <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
-          Bio
-        </label>
-        <textarea
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          value={user.email}
+          disabled
+          className="mt-1"
+        />
+        {!user.emailVerified && (
+          <p className="mt-1 text-sm text-destructive">Email not verified</p>
+        )}
+      </div>
+
+      <div>
+        <Label htmlFor="bio">Bio</Label>
+        <Textarea
           id="bio"
           name="bio"
           rows={4}
           defaultValue={user.bio || ""}
-          placeholder="Tell us about yourself and your artistic practice..."
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+          placeholder="Tell others about yourself..."
+          className="mt-1"
         />
       </div>
 
       <div>
-        <label htmlFor="workInfo" className="block text-sm font-medium text-gray-700">
-          Work Information
-        </label>
-        <textarea
+        <Label htmlFor="location">Location</Label>
+        <Input
+          id="location"
+          name="location"
+          type="text"
+          defaultValue={user.location || ""}
+          placeholder="City, Country"
+          className="mt-1"
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="workInfo">Work Information</Label>
+        <Input
           id="workInfo"
           name="workInfo"
-          rows={3}
-          defaultValue={user.workInfo || ""}
-          placeholder="What do you do for work? How does it support your creative practice?"
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="socialMedia" className="block text-sm font-medium text-gray-700">
-          Social Media / Portfolio
-        </label>
-        <input
           type="text"
-          id="socialMedia"
-          name="socialMedia"
-          defaultValue={user.socialMedia || ""}
-          placeholder="Instagram, website, portfolio links..."
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+          defaultValue={user.workInfo || ""}
+          placeholder="Your profession or company"
+          className="mt-1"
         />
       </div>
 
-      <div className="flex justify-end">
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Saving..." : "Save Changes"}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Artist Information</h3>
+        
+        <div>
+          <Label htmlFor="isArtist">Are you an artist?</Label>
+          <Select
+            id="isArtist"
+            name="isArtist"
+            defaultValue={user.isArtist ? "true" : "false"}
+            className="mt-1"
+          >
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </Select>
+        </div>
+
+        <div>
+          <Label htmlFor="artistType">Artist Type</Label>
+          <Select
+            id="artistType"
+            name="artistType"
+            defaultValue={user.artistType || ""}
+            className="mt-1"
+          >
+            <option value="">Select type...</option>
+            {Object.entries(ArtistType).map(([key, value]) => (
+              <option key={key} value={value}>
+                {value.charAt(0).toUpperCase() + value.slice(1)}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <div>
+          <Label htmlFor="portfolioUrl">Portfolio URL</Label>
+          <Input
+            id="portfolioUrl"
+            name="portfolioUrl"
+            type="url"
+            defaultValue={user.portfolioUrl || ""}
+            placeholder="https://yourportfolio.com"
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Social Media</h3>
+        
+        <div>
+          <Label htmlFor="instagram">Instagram</Label>
+          <Input
+            id="instagram"
+            name="instagram"
+            type="text"
+            defaultValue={user.socialMedia?.instagram || ""}
+            placeholder="@username"
+            className="mt-1"
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="website">Website</Label>
+          <Input
+            id="website"
+            name="website"
+            type="url"
+            defaultValue={user.socialMedia?.website || ""}
+            placeholder="https://yourwebsite.com"
+            className="mt-1"
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="linkedin">LinkedIn</Label>
+          <Input
+            id="linkedin"
+            name="linkedin"
+            type="text"
+            defaultValue={user.socialMedia?.linkedin || ""}
+            placeholder="linkedin.com/in/username"
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      {error && (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      <div className="flex gap-4">
+        <Button type="submit" disabled={loading}>
+          {loading ? "Saving..." : "Save Changes"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.back()}
+          disabled={loading}
+        >
+          Cancel
         </Button>
       </div>
     </form>
-  )
+  );
 }

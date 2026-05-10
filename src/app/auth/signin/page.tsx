@@ -1,28 +1,34 @@
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { SignInForm } from "@/components/SignInForm"
+import { redirect } from "next/navigation";
+import { validateRequest } from "@/lib/auth/session";
+import { SignInForm } from "@/components/auth/SignInForm";
+import Link from "next/link";
 
 export default async function SignInPage() {
-  const session = await auth()
-  
-  if (session) {
-    redirect("/")
+  const { user } = await validateRequest();
+
+  if (user) {
+    redirect("/dashboard");
   }
 
   return (
-    <div className="max-w-md mx-auto px-4 py-16">
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Musa Residency</h1>
-          <p className="text-gray-600">Sign in to start your creative journey</p>
+    <div className="flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-bold tracking-tight">
+            Sign in to your account
+          </h2>
+          <p className="mt-2 text-center text-sm text-muted-foreground">
+            Or{" "}
+            <Link
+              href="/auth/signup"
+              className="font-medium text-primary hover:text-primary/80"
+            >
+              create a new account
+            </Link>
+          </p>
         </div>
-        
         <SignInForm />
-        
-        <div className="mt-8 text-center text-sm text-gray-600">
-          <p>By signing in, you agree to our Terms of Service and Privacy Policy.</p>
-        </div>
       </div>
     </div>
-  )
+  );
 }

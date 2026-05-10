@@ -1,33 +1,34 @@
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { db } from "@/lib/db"
-import { users } from "@/lib/db/schema"
-import { eq } from "drizzle-orm"
-import { ProfileForm } from "@/components/ProfileForm"
+import { redirect } from "next/navigation";
+import { validateRequest } from "@/lib/auth/session";
+import { ProfileForm } from "@/components/profile/ProfileForm";
+import { getDb } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 export default async function ProfilePage() {
-  const session = await auth()
-  
-  if (!session?.user?.id) {
-    redirect("/auth/signin")
-  }
-
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1)
+  const { user } = await validateRequest();
 
   if (!user) {
-    redirect("/auth/signin")
+    redirect("/auth/signin");
+  }
+
+  const db = getDb();
+  const fullUser = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, user.id))
+    .limit(1);
+
+  if (fullUser.length === 0) {
+    redirect("/auth/signin");
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">My Profile</h1>
-        <ProfileForm user={user} />
+    <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-3xl">
+        <h1 className="mb-8 text-3xl font-bold">Your Profile</h1>
+        <ProfileForm user={fullUser[0]} />
       </div>
     </div>
-  )
+  );
 }

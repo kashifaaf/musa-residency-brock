@@ -1,23 +1,15 @@
 import { getDb } from "@/lib/db";
-import { homes, homeImages, users, availability } from "@/lib/db/schema";
-import { eq, and, or, like, gte, lte, sql } from "drizzle-orm";
+import { homes, homeImages, users } from "@/lib/db/schema";
+import { eq, and, gte } from "drizzle-orm";
 import { Card } from "@/components/ui/Card";
 import Link from "next/link";
 import Image from "next/image";
 
-interface SearchResultsProps {
-  filters: {
-    location?: string;
-    checkIn?: string;
-    checkOut?: string;
-    guests?: string;
-  };
-}
-
-export async function SearchResults({ filters }: SearchResultsProps) {
+export async function FeaturedHomes() {
   const db = getDb();
 
-  let query = db
+  // Get published homes with at least one image
+  const featuredHomes = await db
     .select({
       home: homes,
       image: homeImages,
@@ -26,67 +18,27 @@ export async function SearchResults({ filters }: SearchResultsProps) {
     .from(homes)
     .leftJoin(homeImages, and(eq(homeImages.homeId, homes.id), eq(homeImages.order, 0)))
     .leftJoin(users, eq(users.id, homes.userId))
-    .where(eq(homes.isPublished, true));
-
-  // Apply location filter
-  if (filters.location) {
-    query = query.where(
-      or(
-        like(homes.city, `%${filters.location}%`),
-        like(homes.country, `%${filters.location}%`),
-        like(homes.location, `%${filters.location}%`)
-      )
-    );
-  }
-
-  // Apply guest filter
-  if (filters.guests) {
-    query = query.where(gte(homes.maxGuests, parseInt(filters.guests)));
-  }
-
-  const results = await query;
-
-  // If date filters are provided, check availability
-  let filteredResults = results;
-  if (filters.checkIn && filters.checkOut) {
-    const checkInDate = new Date(filters.checkIn);
-    const checkOutDate = new Date(filters.checkOut);
-
-    // Get availability for all homes
-    const homeIds = [...new Set(results.map(r => r.home.id))];
-    const availabilities = await db
-      .select()
-      .from(availability)
-      .where(
-        and(
-          sql`${availability.homeId} IN ${sql.raw(`(${homeIds.map(() => '?').join(',')})`)(...homeIds)}`,
-          lte(availability.startDate, checkInDate),
-          gte(availability.endDate, checkOutDate)
-        )
-      );
-
-    const availableHomeIds = new Set(availabilities.map(a => a.homeId));
-    filteredResults = results.filter(r => availableHomeIds.has(r.home.id));
-  }
+    .where(eq(homes.isPublished, true))
+    .limit(6);
 
   // Group by home to get unique homes
-  const uniqueHomes = filteredResults.reduce((acc, row) => {
+  const uniqueHomes = featuredHomes.reduce((acc, row) => {
     if (!acc.find(h => h.home.id === row.home.id)) {
       acc.push(row);
     }
     return acc;
-  }, [] as typeof filteredResults);
+  }, [] as typeof featuredHomes);
 
   if (uniqueHomes.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">No homes found matching your criteria.</p>
+        <p className="text-muted-foreground">No homes available yet.</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {uniqueHomes.map(({ home, image, owner }) => (
         <Link key={home.id} href={`/homes/${home.id}`}>
           <Card className="overflow-hidden hover:shadow-lg transition-shadow">
