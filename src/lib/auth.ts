@@ -1,28 +1,34 @@
-import NextAuth from "next-auth"
-import Google from "next-auth/providers/google"
-import { DrizzleAdapter } from "@auth-js/drizzle-adapter"
-import { db } from "@/lib/db"
-import { users, accounts, sessions } from "@/lib/db/schema"
+import { type User } from "@/types";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: DrizzleAdapter(db, {
-    usersTable: users,
-    accountsTable: accounts,
-    sessionsTable: sessions,
-  }),
-  providers: [
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID!,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
-    }),
-  ],
-  callbacks: {
-    session({ session, user }) {
-      session.user.id = user.id
-      return session
-    },
-  },
-  pages: {
-    signIn: "/auth/signin",
-  },
-})
+// Simple auth utilities for MVP - replace with proper auth solution later
+export async function getCurrentUser(email?: string): Promise<User | null> {
+  if (!email) return null;
+  
+  // This is a placeholder - implement actual user lookup
+  // In production, this would validate session tokens, etc.
+  return null;
+}
+
+export function generateVerificationToken() {
+  return crypto.randomUUID();
+}
+
+export function isValidEmail(email: string) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+// Placeholder for session management
+export async function createSession(userId: string) {
+  // Implement session creation logic
+  return {
+    token: crypto.randomUUID(),
+    userId,
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+  };
+}
+
+export async function validateSession(token: string) {
+  // Implement session validation
+  return null;
+}

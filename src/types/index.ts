@@ -1,83 +1,69 @@
-import type {
-  User,
-  Listing,
-  Booking,
-  Message,
-  Notification,
-  ListingPhoto,
-  Availability,
-} from '@/lib/db/schema';
+import { InferSelectModel } from "drizzle-orm";
+import { users, homes, bookingRequests, availability, messages, emailNotifications } from "@/lib/db/schema";
+
+// Database model types
+export type User = InferSelectModel<typeof users>;
+export type Home = InferSelectModel<typeof homes>;
+export type BookingRequest = InferSelectModel<typeof bookingRequests>;
+export type Availability = InferSelectModel<typeof availability>;
+export type Message = InferSelectModel<typeof messages>;
+export type EmailNotification = InferSelectModel<typeof emailNotifications>;
 
 // Extended types with relations
-export type UserWithRelations = User & {
-  listings?: Listing[];
-  bookingsAsHost?: Booking[];
-  bookingsAsGuest?: Booking[];
+export type HomeWithHost = Home & {
+  host: User;
 };
 
-export type ListingWithRelations = Listing & {
-  host?: User;
-  photos?: ListingPhoto[];
-  availability?: Availability[];
-  bookings?: Booking[];
-};
-
-export type BookingWithRelations = Booking & {
-  listing?: ListingWithRelations;
-  host?: User;
-  guest?: User;
+export type BookingRequestWithRelations = BookingRequest & {
+  home: HomeWithHost;
+  guest: User;
   messages?: Message[];
 };
 
-export type MessageWithRelations = Message & {
-  sender?: User;
-  receiver?: User;
-  booking?: Booking;
+export type MessageWithSender = Message & {
+  sender: User;
 };
 
-export type NotificationWithRelations = Notification & {
-  user?: User;
-  booking?: BookingWithRelations;
-  listing?: ListingWithRelations;
-};
-
-// Form types
-export type CreateListingFormData = {
+// Form/Input types
+export type CreateHomeInput = {
   title: string;
   description: string;
-  location: string;
-  address?: string;
-  maxGuests: number;
+  address: string;
+  city: string;
+  country: string;
+  propertyType: "apartment" | "house" | "studio" | "loft";
   bedrooms: number;
   bathrooms: number;
+  maxGuests: number;
   amenities: string[];
-  houseRules?: string;
-  creativeFeatures: string[];
-  pricePerNight: number;
-  currency: string;
+  houseRules: string[];
 };
 
-export type CreateBookingFormData = {
+export type CreateBookingRequestInput = {
+  homeId: string;
   checkIn: Date;
   checkOut: Date;
   guestCount: number;
-  guestMessage?: string;
+  message?: string;
 };
 
-export type UpdateProfileFormData = {
-  name?: string;
-  bio?: string;
-  location?: string;
-  workInfo?: string;
-  socialMediaProfiles?: Record<string, string>;
+export type UpdateAvailabilityInput = {
+  homeId: string;
+  dates: Array<{
+    startDate: Date;
+    endDate: Date;
+    isBlocked?: boolean;
+  }>;
 };
 
-// API Response types
-export type ApiResponse<T = unknown> = {
+// API response types
+export type ApiResponse<T = any> = {
   success: boolean;
   data?: T;
-  error?: string;
-  message?: string;
+  error?: {
+    message: string;
+    code?: string;
+  };
 };
 
 export type PaginatedResponse<T> = {
@@ -85,86 +71,29 @@ export type PaginatedResponse<T> = {
   total: number;
   page: number;
   pageSize: number;
-  hasMore: boolean;
+  totalPages: number;
 };
 
 // Search/Filter types
-export type ListingSearchParams = {
-  location?: string;
-  checkIn?: string;
-  checkOut?: string;
-  guests?: number;
-  minPrice?: number;
-  maxPrice?: number;
-  amenities?: string[];
-  creativeFeatures?: string[];
-  page?: number;
-  limit?: number;
+export type HomeSearchFilters = {
+  city?: string;
+  country?: string;
+  checkIn: Date;
+  checkOut: Date;
+  guestCount: number;
+  propertyType?: string;
+  minBedrooms?: number;
 };
 
-export type BookingFilters = {
-  status?: 'pending' | 'approved' | 'declined' | 'cancelled' | 'completed';
-  role?: 'host' | 'guest';
-  startDate?: string;
-  endDate?: string;
-};
+// Status types
+export type BookingStatus = "pending" | "approved" | "declined" | "expired" | "cancelled";
+export type PaymentStatus = "pending" | "authorized" | "captured" | "refunded";
 
-// Stripe types
-export type PaymentIntentData = {
-  clientSecret: string;
-  paymentIntentId: string;
-  amount: number;
-  currency: string;
-};
-
-// Upload types
-export type FileUploadResponse = {
-  url: string;
-  key: string;
-  name: string;
-  size: number;
-};
-
-// Notification preferences
-export type NotificationPreferences = {
-  emailBookingRequests: boolean;
-  emailBookingUpdates: boolean;
-  emailMessages: boolean;
-  emailMarketing: boolean;
-  smsBookingRequests: boolean;
-  smsBookingUpdates: boolean;
-};
-
-// Analytics types
-export type HostAnalytics = {
-  totalViews: number;
-  totalBookings: number;
-  totalRevenue: number;
-  occupancyRate: number;
-  responseRate: number;
-  avgResponseTime: number;
-  upcomingBookings: number;
-  completedBookings: number;
-};
-
-// Calendar types
-export type CalendarEvent = {
-  id: string;
-  title: string;
-  start: Date;
-  end: Date;
-  type: 'booking' | 'blocked';
-  bookingId?: string;
-  guestName?: string;
-};
-
-// Review types (for future implementation)
-export type Review = {
-  id: string;
-  bookingId: string;
-  reviewerId: string;
-  revieweeId: string;
-  rating: number;
-  comment: string;
-  createdAt: Date;
-};
+// Notification types
+export type NotificationType = 
+  | "booking_request"
+  | "booking_approved" 
+  | "booking_declined"
+  | "booking_cancelled"
+  | "booking_reminder"
+  | "message_received";

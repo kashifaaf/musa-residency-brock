@@ -1,83 +1,48 @@
-import { type ClassValue, clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatPrice(price: number | string, currency = 'USD') {
-  const numPrice = typeof price === 'string' ? parseFloat(price) : price;
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
+export function formatCurrency(amount: number, currency: string = "USD") {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
     currency,
-  }).format(numPrice);
+  }).format(amount);
 }
 
-export function formatDate(date: Date | string, format: 'short' | 'long' = 'short') {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  
-  if (format === 'short') {
-    return dateObj.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  }
-  
-  return dateObj.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+export function formatDate(date: Date | string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(date));
+}
+
+export function getDaysFromNow(date: Date | string) {
+  const now = new Date();
+  const then = new Date(date);
+  const diffTime = Math.abs(then.getTime() - now.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
+
+export function getResponseDeadline(createdAt: Date | string) {
+  const date = new Date(createdAt);
+  date.setHours(date.getHours() + 24);
+  return date;
 }
 
 export function calculateNights(checkIn: Date | string, checkOut: Date | string) {
-  const start = typeof checkIn === 'string' ? new Date(checkIn) : checkIn;
-  const end = typeof checkOut === 'string' ? new Date(checkOut) : checkOut;
+  const start = new Date(checkIn);
+  const end = new Date(checkOut);
   const diffTime = Math.abs(end.getTime() - start.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
+  const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return nights;
 }
 
-export function getInitials(name?: string | null) {
-  if (!name) return '';
-  
-  const words = name.trim().split(' ');
-  if (words.length === 1) {
-    return words[0].charAt(0).toUpperCase();
-  }
-  
-  return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
-}
-
-export function truncate(str: string, length: number) {
-  if (str.length <= length) return str;
-  return `${str.slice(0, length)}...`;
-}
-
-export function slugify(text: string) {
-  return text
-    .toString()
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w\-]+/g, '')
-    .replace(/\-\-+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, '');
-}
-
-export function isBookingExpired(createdAt: Date | string) {
-  const created = typeof createdAt === 'string' ? new Date(createdAt) : createdAt;
-  const now = new Date();
-  const diffHours = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
-  return diffHours > 24;
-}
-
-export function getDaysUntil(date: Date | string) {
-  const target = typeof date === 'string' ? new Date(date) : date;
-  const now = new Date();
-  const diffTime = target.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
+export function truncateText(text: string, maxLength: number) {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + "...";
 }

@@ -1,90 +1,83 @@
-import { formatCurrency } from "@/lib/utils"
-import type { Home, User } from "@/types"
+import { MapPin, Home as HomeIcon, Users, Bed, Bath, Wifi, Car, Wind } from "lucide-react";
+import { type Home } from "@/types";
+import { PROPERTY_TYPES, AMENITIES } from "@/lib/constants";
 
 interface HomeDetailsProps {
-  home: Home
-  host: User | null
+  home: Home;
 }
 
-export function HomeDetails({ home, host }: HomeDetailsProps) {
-  const amenitiesList = home.amenities?.split(",").map(a => a.trim()).filter(Boolean) || []
+const amenityIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  "WiFi": Wifi,
+  "Parking": Car,
+  "Air conditioning": Wind,
+};
 
+export function HomeDetails({ home }: HomeDetailsProps) {
+  const propertyType = PROPERTY_TYPES.find(t => t.value === home.propertyType)?.label || home.propertyType;
+  
   return (
-    <div className="space-y-6">
-      {/* Image Gallery */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {home.images && home.images.length > 0 ? (
-          home.images.map((image, index) => (
-            <div key={index} className="aspect-video bg-gray-200 rounded-lg overflow-hidden">
-              <img
-                src={image}
-                alt={`${home.title} - Image ${index + 1}`}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ))
-        ) : (
-          <div className="aspect-video bg-gray-200 rounded-lg flex items-center justify-center">
-            <span className="text-gray-500">No images available</span>
-          </div>
-        )}
+    <div>
+      <h1 className="mb-2 text-3xl font-bold">{home.title}</h1>
+      
+      <div className="mb-6 flex items-center gap-2 text-gray-600">
+        <MapPin className="h-5 w-5" />
+        <span className="text-lg">{home.city}, {home.country}</span>
       </div>
-
-      {/* Home Info */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">{home.title}</h1>
-        <p className="text-lg text-gray-600 mb-4">{home.location}</p>
-        <div className="flex items-center space-x-6 text-sm text-gray-500">
+      
+      <div className="mb-8 flex flex-wrap gap-6 text-gray-700">
+        <div className="flex items-center gap-2">
+          <HomeIcon className="h-5 w-5" />
+          <span>{propertyType}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
           <span>{home.maxGuests} guests</span>
-          <span>{home.bedrooms} bedrooms</span>
-          <span>{home.bathrooms} bathrooms</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Bed className="h-5 w-5" />
+          <span>{home.bedrooms} {home.bedrooms === 1 ? "bedroom" : "bedrooms"}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Bath className="h-5 w-5" />
+          <span>{home.bathrooms} {home.bathrooms === 1 ? "bathroom" : "bathrooms"}</span>
         </div>
       </div>
-
-      {/* Host Info */}
-      {host && (
-        <div className="border-t pt-6">
-          <h2 className="text-lg font-semibold mb-3">Hosted by {host.name}</h2>
-          <div className="flex items-start space-x-4">
-            {host.image && (
-              <img
-                src={host.image}
-                alt={host.name || "Host"}
-                className="w-12 h-12 rounded-full"
-              />
-            )}
-            <div>
-              {host.bio && (
-                <p className="text-gray-600 mb-2">{host.bio}</p>
-              )}
-              {host.location && (
-                <p className="text-sm text-gray-500">📍 {host.location}</p>
-              )}
-            </div>
+      
+      <div className="mb-8">
+        <h2 className="mb-4 text-xl font-semibold">About this place</h2>
+        <p className="whitespace-pre-wrap text-gray-700">{home.description}</p>
+      </div>
+      
+      {home.amenities && home.amenities.length > 0 && (
+        <div className="mb-8">
+          <h2 className="mb-4 text-xl font-semibold">Amenities</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {home.amenities.map((amenity) => {
+              const Icon = amenityIcons[amenity];
+              return (
+                <div key={amenity} className="flex items-center gap-2">
+                  {Icon && <Icon className="h-5 w-5 text-gray-600" />}
+                  <span className="text-gray-700">{amenity}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
-
-      {/* Description */}
-      <div className="border-t pt-6">
-        <h2 className="text-lg font-semibold mb-3">About this space</h2>
-        <p className="text-gray-600 whitespace-pre-wrap">{home.description}</p>
-      </div>
-
-      {/* Amenities */}
-      {amenitiesList.length > 0 && (
-        <div className="border-t pt-6">
-          <h2 className="text-lg font-semibold mb-3">Amenities</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {amenitiesList.map((amenity, index) => (
-              <div key={index} className="flex items-center space-x-2">
-                <span className="text-green-500">✓</span>
-                <span className="text-gray-600">{amenity}</span>
-              </div>
+      
+      {home.houseRules && home.houseRules.length > 0 && (
+        <div>
+          <h2 className="mb-4 text-xl font-semibold">House Rules</h2>
+          <ul className="space-y-2 text-gray-700">
+            {home.houseRules.map((rule, index) => (
+              <li key={index} className="flex items-start">
+                <span className="mr-2">•</span>
+                <span>{rule}</span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
     </div>
-  )
+  );
 }

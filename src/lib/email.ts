@@ -1,45 +1,39 @@
-interface EmailOptions {
+import { Resend } from "resend";
+let __resendInstance: ReturnType<typeof getResend> | null = null
+function getResend() {
+  if (!__resendInstance) {
+    __resendInstance = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+  }
+  return __resendInstance
+}
+const resend = new Proxy({} as ReturnType<typeof getResend>, {
+  get(_, prop) {
+    const target = getResend() as Record<string | symbol, unknown>
+    const value = target[prop]
+    return typeof value === "function" ? value.bind(target) : value
+  },
+})
+interface SendEmailOptions {
   to: string;
   subject: string;
-  html: string;
+  text: string;
+  html?: string;
 }
-
-export async function sendEmail(options: EmailOptions): Promise<void> {
-  // In a real implementation, you would use a service like SendGrid, Resend, or AWS SES
-  // For now, we'll just log the email
-  console.log('Email would be sent:', {
-    to: options.to,
-    subject: options.subject,
-    html: options.html,
-  });
-}
-
-export function generateBookingRequestEmail(hostName: string, guestName: string, homeName: string): string {
-  return `
-    <h2>New Booking Request</h2>
-    <p>Hi ${hostName},</p>
-    <p>You have a new booking request from ${guestName} for your property "${homeName}".</p>
-    <p>Please log in to your Musa Residency account to review and respond within 24 hours.</p>
-    <p>Best regards,<br>The Musa Residency Team</p>
-  `;
-}
-
-export function generateBookingApprovedEmail(guestName: string, homeName: string): string {
-  return `
-    <h2>Booking Approved!</h2>
-    <p>Hi ${guestName},</p>
-    <p>Great news! Your booking request for "${homeName}" has been approved.</p>
-    <p>Please complete your payment to confirm your reservation.</p>
-    <p>Best regards,<br>The Musa Residency Team</p>
-  `;
-}
-
-export function generateBookingDeclinedEmail(guestName: string, homeName: string): string {
-  return `
-    <h2>Booking Request Update</h2>
-    <p>Hi ${guestName},</p>
-    <p>Unfortunately, your booking request for "${homeName}" was not approved.</p>
-    <p>Don't worry - there are many other amazing properties available on Musa Residency!</p>
-    <p>Best regards,<br>The Musa Residency Team</p>
-  `;
+export async function sendEmail({ to, subject, text, html }: SendEmailOptions) {
+  if (!resend) {
+    console.log("Email not sent (no API key):", { to, subject, text });
+    return;
+  }
+  try {
+    await resend.emails.send({
+      from: "Musa Residency <noreply@musaresidency.com>",
+      to,
+      subject,
+      text,
+      html: html || text,
+    });
+  } catch (error) {
+    console.error("Failed to send email:", error);
+    throw error;
+  }
 }

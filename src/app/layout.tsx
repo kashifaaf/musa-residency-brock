@@ -1,23 +1,20 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
-import { Providers } from '@/components/Providers';
-import { Toaster } from '@/components/ui/toaster';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Providers } from "@/components/Providers";
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ 
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: 'Musa Residency - Creative Home Exchange Platform',
-  description: 'Exchange homes with artists and creatives worldwide. Find inspiring spaces for your next creative residency.',
+  title: "Musa Residency - Creative Home Exchange",
+  description: "Connect with artists worldwide through curated home exchanges. Find inspiring spaces and authentic cultural experiences.",
   openGraph: {
-    title: 'Musa Residency',
-    description: 'Creative home exchange platform for artists',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Musa Residency',
-    description: 'Creative home exchange platform for artists',
+    title: "Musa Residency - Creative Home Exchange",
+    description: "Connect with artists worldwide through curated home exchanges",
+    type: "website",
   },
 };
 
@@ -27,12 +24,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <Providers>
-          {children}
-          <Toaster />
-        </Providers>
+    <html lang="en" className={inter.className}>
+      <body className="antialiased">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

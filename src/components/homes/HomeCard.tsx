@@ -1,45 +1,69 @@
-import Link from 'next/link';
-import Image from 'next/image';
-import { Home } from '@/types';
-import { formatCurrency } from '@/lib/utils';
+import Link from "next/link";
+import Image from "next/image";
+import { MapPin, Users, Bed, Bath } from "lucide-react";
+import { type Home, type User } from "@/types";
+import { truncateText } from "@/lib/utils";
 
 interface HomeCardProps {
-  home: Home & { photos?: { url: string }[] };
+  home: Home;
+  host: User;
 }
 
-export function HomeCard({ home }: HomeCardProps) {
-  const primaryPhoto = home.photos?.[0]?.url || '/placeholder-home.jpg';
-
+export function HomeCard({ home, host }: HomeCardProps) {
+  const mainPhoto = home.photos[0];
+  
   return (
-    <Link href={`/homes/${home.id}`} className="group">
-      <div className="card p-0 overflow-hidden hover:shadow-md transition-shadow">
-        <div className="relative h-48 w-full">
+    <Link 
+      href={`/homes/${home.id}`}
+      className="group block overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-lg"
+    >
+      <div className="relative aspect-[4/3]">
+        {mainPhoto ? (
           <Image
-            src={primaryPhoto}
-            alt={home.title}
+            src={mainPhoto.url}
+            alt={mainPhoto.caption || home.title}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
-          <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded-md text-sm font-medium">
-            {formatCurrency(home.pricePerNight)}/night
-          </div>
+        ) : (
+          <div className="h-full w-full bg-gray-200" />
+        )}
+      </div>
+      
+      <div className="p-4">
+        <h3 className="mb-2 text-lg font-semibold group-hover:text-primary-600">
+          {home.title}
+        </h3>
+        
+        <div className="mb-3 flex items-center gap-2 text-sm text-gray-600">
+          <MapPin className="h-4 w-4" />
+          <span>{home.city}, {home.country}</span>
         </div>
         
-        <div className="p-4">
-          <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
-            {home.title}
-          </h3>
-          <p className="text-gray-600 text-sm mb-2">{home.location}</p>
-          
-          <div className="flex items-center text-sm text-gray-500 space-x-4">
-            <span>{home.bedrooms} bed</span>
-            <span>{home.bathrooms} bath</span>
-            <span>Up to {home.maxGuests} guests</span>
+        <p className="mb-4 text-sm text-gray-600">
+          {truncateText(home.description, 100)}
+        </p>
+        
+        <div className="flex items-center justify-between border-t pt-3">
+          <div className="flex items-center gap-4 text-sm text-gray-600">
+            <span className="flex items-center gap-1">
+              <Bed className="h-4 w-4" />
+              {home.bedrooms}
+            </span>
+            <span className="flex items-center gap-1">
+              <Bath className="h-4 w-4" />
+              {home.bathrooms}
+            </span>
+            <span className="flex items-center gap-1">
+              <Users className="h-4 w-4" />
+              {home.maxGuests}
+            </span>
           </div>
           
-          <p className="text-gray-600 text-sm mt-2 line-clamp-2">
-            {home.description}
-          </p>
+          <div className="text-sm text-gray-500">
+            by {host.name}
+          </div>
         </div>
       </div>
     </Link>

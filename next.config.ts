@@ -1,25 +1,22 @@
-import type { NextConfig } from 'next';
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    dynamicIO: true,
-  },
-  serverExternalPackages: ['@neondatabase/serverless', 'drizzle-orm'],
+  reactStrictMode: true,
+  serverExternalPackages: ["@neondatabase/serverless", "sharp"],
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'utfs.io',
-        port: '',
-        pathname: '/f/**',
+        protocol: "https",
+        hostname: "uploadthing.com",
       },
       {
-        protocol: 'https',
-        hostname: 'uploadthing.com',
-        port: '',
-        pathname: '/f/**',
+        protocol: "https",
+        hostname: "utfs.io",
       },
     ],
+  },
+  experimental: {
+    typedRoutes: true,
   },
 };
 
