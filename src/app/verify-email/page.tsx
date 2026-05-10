@@ -26,7 +26,7 @@ export default function VerifyEmailPage() {
           </p>
           
           <Link
-            href="/auth/signin"
+            href="/signin"
             className="block w-full rounded-lg bg-primary-600 py-3 text-white hover:bg-primary-700"
           >
             Continue to Sign In

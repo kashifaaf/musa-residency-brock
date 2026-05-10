@@ -1,92 +1,82 @@
 import Link from "next/link";
-import { Plus, Home, Calendar, MessageSquare, Settings } from "lucide-react";
+import { Plus, Home, Calendar, MessageSquare, User } from "lucide-react";
 
 export default function DashboardPage() {
+  // In production, get user data from session
+  const user = {
+    name: "John Doe",
+    email: "john@example.com",
+    isHost: false,
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Manage your homes and bookings</p>
+          <h1 className="text-3xl font-bold">Welcome back, {user.name}!</h1>
+          <p className="mt-2 text-gray-600">Manage your bookings and listings from here.</p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <div className="flex items-center">
-              <Home className="h-8 w-8 text-primary-600" />
-              <div className="ml-3">
-                <p className="text-2xl font-semibold text-gray-900">0</p>
-                <p className="text-sm text-gray-600">Your Homes</p>
-              </div>
-            </div>
+        {!user.isHost && (
+          <div className="mb-8 rounded-lg bg-primary-50 p-6">
+            <h2 className="mb-2 text-xl font-semibold">Become a Host</h2>
+            <p className="mb-4 text-gray-700">
+              List your home and start earning from fellow remote workers.
+            </p>
             <Link
-              href="/dashboard/homes/new"
-              className="mt-4 flex items-center text-sm text-primary-600 hover:text-primary-700"
+              href="/host/onboarding"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-white hover:bg-primary-700"
             >
-              <Plus className="h-4 w-4 mr-1" />
-              Add your first home
+              <Plus className="h-5 w-5" />
+              List your home
             </Link>
           </div>
+        )}
 
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <div className="flex items-center">
-              <Calendar className="h-8 w-8 text-primary-600" />
-              <div className="ml-3">
-                <p className="text-2xl font-semibold text-gray-900">0</p>
-                <p className="text-sm text-gray-600">Active Bookings</p>
-              </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <Link
+            href="/dashboard/bookings"
+            className="flex items-center gap-4 rounded-lg border border-gray-200 bg-white p-6 hover:shadow-md"
+          >
+            <Calendar className="h-10 w-10 text-primary-600" />
+            <div>
+              <h3 className="font-semibold">My Bookings</h3>
+              <p className="text-sm text-gray-600">View upcoming trips</p>
             </div>
-          </div>
+          </Link>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <div className="flex items-center">
-              <MessageSquare className="h-8 w-8 text-primary-600" />
-              <div className="ml-3">
-                <p className="text-2xl font-semibold text-gray-900">0</p>
-                <p className="text-sm text-gray-600">Messages</p>
-              </div>
+          <Link
+            href="/dashboard/listings"
+            className="flex items-center gap-4 rounded-lg border border-gray-200 bg-white p-6 hover:shadow-md"
+          >
+            <Home className="h-10 w-10 text-primary-600" />
+            <div>
+              <h3 className="font-semibold">My Listings</h3>
+              <p className="text-sm text-gray-600">Manage your homes</p>
             </div>
-          </div>
+          </Link>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <div className="flex items-center">
-              <Settings className="h-8 w-8 text-primary-600" />
-              <div className="ml-3">
-                <p className="text-sm text-gray-600">Profile</p>
-                <Link
-                  href="/dashboard/profile"
-                  className="text-primary-600 hover:text-primary-700"
-                >
-                  Update Profile
-                </Link>
-              </div>
+          <Link
+            href="/dashboard/messages"
+            className="flex items-center gap-4 rounded-lg border border-gray-200 bg-white p-6 hover:shadow-md"
+          >
+            <MessageSquare className="h-10 w-10 text-primary-600" />
+            <div>
+              <h3 className="font-semibold">Messages</h3>
+              <p className="text-sm text-gray-600">Chat with guests</p>
             </div>
-          </div>
-        </div>
+          </Link>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <h2 className="mb-4 text-xl font-semibold">Recent Booking Requests</h2>
-            <div className="text-center py-8">
-              <p className="text-gray-600">No booking requests yet</p>
-              <p className="text-sm text-gray-500 mt-1">
-                Add a home to start receiving bookings
-              </p>
+          <Link
+            href="/dashboard/profile"
+            className="flex items-center gap-4 rounded-lg border border-gray-200 bg-white p-6 hover:shadow-md"
+          >
+            <User className="h-10 w-10 text-primary-600" />
+            <div>
+              <h3 className="font-semibold">Profile</h3>
+              <p className="text-sm text-gray-600">Edit your info</p>
             </div>
-          </div>
-
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <h2 className="mb-4 text-xl font-semibold">Your Bookings</h2>
-            <div className="text-center py-8">
-              <p className="text-gray-600">No bookings yet</p>
-              <Link
-                href="/homes"
-                className="text-sm text-primary-600 hover:text-primary-700 mt-1 inline-block"
-              >
-                Browse homes to book
-              </Link>
-            </div>
-          </div>
+          </Link>
         </div>
       </div>
     </div>
