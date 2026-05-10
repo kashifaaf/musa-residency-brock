@@ -1,24 +1,25 @@
-import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
-import { SignInForm } from '@/components/auth/SignInForm';
+import { LoginForm } from "@/components/auth/LoginForm";
+import Link from "next/link";
 
-export default async function SignInPage() {
-  const session = await auth();
-  
-  if (session?.user) {
-    redirect('/dashboard');
-  }
-
+export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-secondary/20">
-      <div className="max-w-md w-full mx-auto p-6">
-        <div className="bg-card rounded-lg shadow-lg p-8">
-          <h1 className="text-2xl font-bold text-center mb-6">Sign in to Musa Residency</h1>
-          <p className="text-center text-muted-foreground mb-8">
-            Connect with creative spaces worldwide
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold">Welcome back</h1>
+          <p className="mt-2 text-gray-600">
+            Sign in to your account
           </p>
-          <SignInForm />
         </div>
+        
+        <LoginForm />
+        
+        <p className="text-center text-sm text-gray-600">
+          Don't have an account?{" "}
+          <Link href="/signup" className="font-medium text-primary-600 hover:text-primary-500">
+            Sign up
+          </Link>
+        </p>
       </div>
     </div>
   );
