@@ -1,138 +1,170 @@
-import type { 
-  users, 
-  homes, 
-  homeImages, 
-  availability, 
-  bookingRequests, 
-  messages 
-} from "@/lib/db/schema";
-
-// Database type exports
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
-
-export type Home = typeof homes.$inferSelect;
-export type NewHome = typeof homes.$inferInsert;
-
-export type HomeImage = typeof homeImages.$inferSelect;
-export type NewHomeImage = typeof homeImages.$inferInsert;
-
-export type Availability = typeof availability.$inferSelect;
-export type NewAvailability = typeof availability.$inferInsert;
-
-export type BookingRequest = typeof bookingRequests.$inferSelect;
-export type NewBookingRequest = typeof bookingRequests.$inferInsert;
-
-export type Message = typeof messages.$inferSelect;
-export type NewMessage = typeof messages.$inferInsert;
+import type {
+  User,
+  Listing,
+  Booking,
+  Message,
+  Notification,
+  ListingPhoto,
+  Availability,
+} from '@/lib/db/schema';
 
 // Extended types with relations
-export type HomeWithImages = Home & {
-  images: HomeImage[];
-  user?: User;
+export type UserWithRelations = User & {
+  listings?: Listing[];
+  bookingsAsHost?: Booking[];
+  bookingsAsGuest?: Booking[];
 };
 
-export type HomeWithFullDetails = Home & {
-  images: HomeImage[];
-  user: User;
-  availability: Availability[];
+export type ListingWithRelations = Listing & {
+  host?: User;
+  photos?: ListingPhoto[];
+  availability?: Availability[];
+  bookings?: Booking[];
 };
 
-export type BookingRequestWithDetails = BookingRequest & {
-  home: HomeWithImages;
-  guest: User;
-  host: User;
+export type BookingWithRelations = Booking & {
+  listing?: ListingWithRelations;
+  host?: User;
+  guest?: User;
   messages?: Message[];
 };
 
-export type MessageWithUsers = Message & {
-  sender: User;
-  recipient: User;
+export type MessageWithRelations = Message & {
+  sender?: User;
+  receiver?: User;
+  booking?: Booking;
 };
 
-// Enums and constants
-export const BookingStatus = {
-  PENDING: "pending",
-  APPROVED: "approved",
-  DECLINED: "declined",
-  EXPIRED: "expired",
-  CANCELLED: "cancelled",
-  COMPLETED: "completed",
-} as const;
+export type NotificationWithRelations = Notification & {
+  user?: User;
+  booking?: BookingWithRelations;
+  listing?: ListingWithRelations;
+};
 
-export type BookingStatusType = typeof BookingStatus[keyof typeof BookingStatus];
-
-export const HomeType = {
-  APARTMENT: "apartment",
-  HOUSE: "house",
-  STUDIO: "studio",
-  LOFT: "loft",
-  COTTAGE: "cottage",
-  OTHER: "other",
-} as const;
-
-export type HomeTypeType = typeof HomeType[keyof typeof HomeType];
-
-export const ArtistType = {
-  VISUAL: "visual",
-  WRITER: "writer",
-  MUSICIAN: "musician",
-  PERFORMER: "performer",
-  FILMMAKER: "filmmaker",
-  DESIGNER: "designer",
-  OTHER: "other",
-} as const;
-
-export type ArtistTypeType = typeof ArtistType[keyof typeof ArtistType];
-
-// Form/API types
-export interface SearchFilters {
-  location?: string;
-  checkIn?: Date;
-  checkOut?: Date;
-  guests?: number;
-  minBedrooms?: number;
-  artistType?: ArtistTypeType;
-  homeType?: HomeTypeType;
-}
-
-export interface CreateHomeInput {
+// Form types
+export type CreateListingFormData = {
   title: string;
   description: string;
   location: string;
-  country: string;
-  city: string;
   address?: string;
-  homeType: HomeTypeType;
+  maxGuests: number;
   bedrooms: number;
   bathrooms: number;
-  maxGuests: number;
-  amenities?: string[];
-  creativeAmenities?: string[];
+  amenities: string[];
   houseRules?: string;
-  localArtScene?: string;
-}
+  creativeFeatures: string[];
+  pricePerNight: number;
+  currency: string;
+};
 
-export interface CreateBookingRequestInput {
-  homeId: string;
+export type CreateBookingFormData = {
   checkIn: Date;
   checkOut: Date;
-  guests: number;
-  message?: string;
-}
+  guestCount: number;
+  guestMessage?: string;
+};
 
-export interface PaginationParams {
-  page?: number;
-  limit?: number;
-}
+export type UpdateProfileFormData = {
+  name?: string;
+  bio?: string;
+  location?: string;
+  workInfo?: string;
+  socialMediaProfiles?: Record<string, string>;
+};
 
-export interface ApiResponse<T> {
+// API Response types
+export type ApiResponse<T = unknown> = {
   success: boolean;
   data?: T;
   error?: string;
-}
+  message?: string;
+};
 
-// Utility types
-export type ActionResponse<T = void> = 
-  | { success: true; data: T }
-  | { success: false; error: string };
+export type PaginatedResponse<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+};
+
+// Search/Filter types
+export type ListingSearchParams = {
+  location?: string;
+  checkIn?: string;
+  checkOut?: string;
+  guests?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  amenities?: string[];
+  creativeFeatures?: string[];
+  page?: number;
+  limit?: number;
+};
+
+export type BookingFilters = {
+  status?: 'pending' | 'approved' | 'declined' | 'cancelled' | 'completed';
+  role?: 'host' | 'guest';
+  startDate?: string;
+  endDate?: string;
+};
+
+// Stripe types
+export type PaymentIntentData = {
+  clientSecret: string;
+  paymentIntentId: string;
+  amount: number;
+  currency: string;
+};
+
+// Upload types
+export type FileUploadResponse = {
+  url: string;
+  key: string;
+  name: string;
+  size: number;
+};
+
+// Notification preferences
+export type NotificationPreferences = {
+  emailBookingRequests: boolean;
+  emailBookingUpdates: boolean;
+  emailMessages: boolean;
+  emailMarketing: boolean;
+  smsBookingRequests: boolean;
+  smsBookingUpdates: boolean;
+};
+
+// Analytics types
+export type HostAnalytics = {
+  totalViews: number;
+  totalBookings: number;
+  totalRevenue: number;
+  occupancyRate: number;
+  responseRate: number;
+  avgResponseTime: number;
+  upcomingBookings: number;
+  completedBookings: number;
+};
+
+// Calendar types
+export type CalendarEvent = {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  type: 'booking' | 'blocked';
+  bookingId?: string;
+  guestName?: string;
+};
+
+// Review types (for future implementation)
+export type Review = {
+  id: string;
+  bookingId: string;
+  reviewerId: string;
+  revieweeId: string;
+  rating: number;
+  comment: string;
+  createdAt: Date;
+};

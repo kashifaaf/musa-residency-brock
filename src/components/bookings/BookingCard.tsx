@@ -1,176 +1,175 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { formatCurrency, formatDate, calculateNights } from "@/lib/utils"
-import { Button } from "@/components/ui/Button"
-import { approveBooking, declineBooking } from "@/actions/bookings"
-import type { Booking, Home, User } from "@/types"
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { formatPrice, calculateNights } from '@/lib/utils';
+import { createBooking } from '@/actions/bookings';
+import { useToast } from '@/hooks/use-toast';
+import type { Listing } from '@/lib/db/schema';
 
 interface BookingCardProps {
-  booking: Booking
-  home: Home | null
-  host: User | null
-  guest: User | null
-  userRole: "host" | "guest"
+  listing: Listing;
+  isAvailable: boolean;
+  checkIn?: string;
+  checkOut?: string;
+  guests?: number;
 }
 
-export function BookingCard({ booking, home, host, guest, userRole }: BookingCardProps) {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+export function BookingCard({ listing, isAvailable, checkIn, checkOut, guests = 2 }: BookingCardProps) {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bookingData, setBookingData] = useState({
+    checkIn: checkIn || '',
+    checkOut: checkOut || '',
+    guestCount: guests,
+    guestMessage: '',
+  });
 
-  const nights = calculateNights(booking.checkIn, booking.checkOut)
-  const isPending = booking.status === "pending"
-  const isHost = userRole === "host"
+  const nights = bookingData.checkIn && bookingData.checkOut
+    ? calculateNights(bookingData.checkIn, bookingData.checkOut)
+    : 0;
+  
+  const totalPrice = nights * parseFloat(listing.pricePerNight);
 
-  const handleApprove = async () => {
-    setIsLoading(true)
-    setError("")
-
-    const result = await approveBooking(booking.id)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    if (result.success) {
-      router.refresh()
-    } else {
-      setError(result.error)
+    if (!session?.user) {
+      router.push('/auth/signin');
+      return;
     }
-    
-    setIsLoading(false)
-  }
 
-  const handleDecline = async () => {
-    setIsLoading(true)
-    setError("")
-
-    const result = await declineBooking(booking.id)
-    
-    if (result.success) {
-      router.refresh()
-    } else {
-      setError(result.error)
+    if (nights < 30) {
+      toast({
+        title: 'Minimum stay required',
+        description: 'This listing requires a minimum stay of 30 nights.',
+        variant: 'destructive',
+      });
+      return;
     }
-    
-    setIsLoading(false)
-  }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "text-yellow-600 bg-yellow-100"
-      case "approved":
-        return "text-green-600 bg-green-100"
-      case "declined":
-        return "text-red-600 bg-red-100"
-      case "paid":
-        return "text-blue-600 bg-blue-100"
-      case "cancelled":
-        return "text-gray-600 bg-gray-100"
-      default:
-        return "text-gray-600 bg-gray-100"
+    setIsSubmitting(true);
+    try {
+      const result = await createBooking({
+        listingId: listing.id,
+        checkIn: new Date(bookingData.checkIn),
+        checkOut: new Date(bookingData.checkOut),
+        guestCount: bookingData.guestCount,
+        guestMessage: bookingData.guestMessage,
+        totalPrice,
+        currency: listing.currency,
+      });
+
+      if (result.success && result.data) {
+        toast({
+          title: 'Booking request sent!',
+          description: 'The host has 24 hours to respond to your request.',
+        });
+        router.push(`/bookings?tab=guest`);
+      } else {
+        throw new Error(result.error || 'Failed to create booking');
+      }
+    } catch (error) {
+      toast({
+        title: 'Booking failed',
+        description: error instanceof Error ? error.message : 'Something went wrong',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
-    <div className="bg-white rounded-lg shadow border p-6">
-      {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
-          <p className="text-red-800 text-sm">{error}</p>
-        </div>
-      )}
+    <Card className="sticky top-4">
+      <CardHeader>
+        <CardTitle>
+          <span>{formatPrice(listing.pricePerNight, listing.currency)}</span>
+          <span className="text-base font-normal text-muted-foreground"> / night</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="checkIn">Check-in</Label>
+              <Input
+                id="checkIn"
+                type="date"
+                value={bookingData.checkIn}
+                onChange={(e) => setBookingData({ ...bookingData, checkIn: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="checkOut">Check-out</Label>
+              <Input
+                id="checkOut"
+                type="date"
+                value={bookingData.checkOut}
+                onChange={(e) => setBookingData({ ...bookingData, checkOut: e.target.value })}
+                required
+              />
+            </div>
+          </div>
 
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            {home?.title || "Unknown Home"}
-          </h3>
-          <p className="text-gray-600">{home?.location}</p>
-        </div>
-        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
-          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
-        <div>
-          <span className="text-gray-500">Check In:</span>
-          <div className="font-medium">{formatDate(booking.checkIn)}</div>
-        </div>
-        <div>
-          <span className="text-gray-500">Check Out:</span>
-          <div className="font-medium">{formatDate(booking.checkOut)}</div>
-        </div>
-        <div>
-          <span className="text-gray-500">Guests:</span>
-          <div className="font-medium">{booking.guests}</div>
-        </div>
-        <div>
-          <span className="text-gray-500">Total:</span>
-          <div className="font-medium">{formatCurrency(booking.totalPrice)}</div>
-        </div>
-      </div>
-
-      {booking.message && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-md">
-          <span className="text-gray-500 text-sm">Message from guest:</span>
-          <p className="text-gray-700 mt-1">{booking.message}</p>
-        </div>
-      )}
-
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          {(isHost ? guest : host)?.image && (
-            <img
-              src={(isHost ? guest : host)!.image!}
-              alt={(isHost ? guest : host)?.name || "User"}
-              className="w-8 h-8 rounded-full"
-            />
-          )}
           <div>
-            <p className="font-medium">
-              {isHost ? "Request from " : "Hosted by "}
-              {(isHost ? guest : host)?.name}
-            </p>
-            <p className="text-sm text-gray-500">
-              {isHost ? guest?.email : host?.email}
-            </p>
+            <Label htmlFor="guestCount">Guests</Label>
+            <Input
+              id="guestCount"
+              type="number"
+              min="1"
+              max={listing.maxGuests}
+              value={bookingData.guestCount}
+              onChange={(e) => setBookingData({ ...bookingData, guestCount: parseInt(e.target.value) })}
+              required
+            />
           </div>
-        </div>
 
-        {isHost && isPending && (
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDecline}
-              disabled={isLoading}
-            >
-              Decline
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleApprove}
-              disabled={isLoading}
-            >
-              {isLoading ? "Processing..." : "Approve"}
-            </Button>
+          <div>
+            <Label htmlFor="guestMessage">Message to host (optional)</Label>
+            <Textarea
+              id="guestMessage"
+              placeholder="Tell the host about yourself and your trip..."
+              value={bookingData.guestMessage}
+              onChange={(e) => setBookingData({ ...bookingData, guestMessage: e.target.value })}
+              rows={3}
+            />
           </div>
-        )}
 
-        {booking.status === "approved" && !isHost && (
-          <Button size="sm">
-            Complete Payment
+          {nights > 0 && (
+            <div className="space-y-2 pt-4 border-t">
+              <div className="flex justify-between text-sm">
+                <span>{formatPrice(listing.pricePerNight, listing.currency)} × {nights} nights</span>
+                <span>{formatPrice(totalPrice, listing.currency)}</span>
+              </div>
+              <div className="flex justify-between font-semibold">
+                <span>Total</span>
+                <span>{formatPrice(totalPrice, listing.currency)}</span>
+              </div>
+              {nights < 30 && (
+                <p className="text-sm text-destructive">Minimum stay of 30 nights required</p>
+              )}
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={!isAvailable || isSubmitting || nights < 30}
+          >
+            {!isAvailable ? 'Not Available' : isSubmitting ? 'Requesting...' : 'Request to Book'}
           </Button>
-        )}
-      </div>
-
-      {isPending && isHost && (
-        <div className="mt-4 p-3 bg-yellow-50 rounded-md">
-          <p className="text-yellow-800 text-sm">
-            Response deadline: {formatDate(booking.responseDeadline)}
-          </p>
-        </div>
-      )}
-    </div>
-  )
+        </form>
+      </CardContent>
+    </Card>
+  );
 }

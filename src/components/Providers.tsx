@@ -1,12 +1,23 @@
-"use client";
+'use client';
 
-import { ReactNode } from "react";
+import { SessionProvider } from 'next-auth/react';
+import { ThemeProvider } from 'next-themes';
 
 interface ProvidersProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export function Providers({ children }: ProvidersProps) {
-  // Add client-side providers here as needed (e.g., theme provider, modals, etc.)
-  return <>{children}</>;
+  return (
+    <SessionProvider>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        {children}
+      </ThemeProvider>
+    </SessionProvider>
+  );
 }

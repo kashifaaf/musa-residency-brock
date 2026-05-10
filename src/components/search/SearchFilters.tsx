@@ -1,113 +1,141 @@
-"use client";
+'use client';
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
-import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Select";
-import { HomeType } from "@/lib/constants";
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { AMENITIES, CREATIVE_FEATURES } from '@/lib/constants';
 
-interface SearchFiltersProps {
-  initialFilters: {
-    location?: string;
-    checkIn?: string;
-    checkOut?: string;
-    guests?: string;
-  };
-}
-
-export function SearchFilters({ initialFilters }: SearchFiltersProps) {
+export function SearchFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
+  const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>(
+    searchParams.get('amenities')?.split(',') || []
+  );
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>(
+    searchParams.get('features')?.split(',') || []
+  );
 
-  function handleFilterChange(key: string, value: string) {
+  const applyFilters = () => {
     const params = new URLSearchParams(searchParams.toString());
     
-    if (value) {
-      params.set(key, value);
-    } else {
-      params.delete(key);
-    }
+    if (minPrice) params.set('minPrice', minPrice);
+    else params.delete('minPrice');
     
-    router.replace(`/search?${params.toString()}`);
-  }
+    if (maxPrice) params.set('maxPrice', maxPrice);
+    else params.delete('maxPrice');
+    
+    if (selectedAmenities.length) params.set('amenities', selectedAmenities.join(','));
+    else params.delete('amenities');
+    
+    if (selectedFeatures.length) params.set('features', selectedFeatures.join(','));
+    else params.delete('features');
+    
+    router.push(`/listings?${params.toString()}`);
+  };
 
-  function clearFilters() {
-    router.replace("/search");
-  }
+  const clearFilters = () => {
+    setMinPrice('');
+    setMaxPrice('');
+    setSelectedAmenities([]);
+    setSelectedFeatures([]);
+    router.push('/listings');
+  };
 
   return (
-    <div className="space-y-6 rounded-lg border bg-card p-6">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold">Filters</h3>
-        <Button variant="ghost" size="sm" onClick={clearFilters}>
-          Clear all
-        </Button>
+    <div className="space-y-6">
+      <div>
+        <h3 className="font-semibold mb-4">Price Range</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label htmlFor="minPrice">Min</Label>
+            <Input
+              id="minPrice"
+              type="number"
+              placeholder="$0"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="maxPrice">Max</Label>
+            <Input
+              id="maxPrice"
+              type="number"
+              placeholder="$1000"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
       <div>
-        <Label htmlFor="filter-location">Location</Label>
-        <Input
-          id="filter-location"
-          type="text"
-          placeholder="City or country"
-          defaultValue={initialFilters.location}
-          onChange={(e) => handleFilterChange("location", e.target.value)}
-          className="mt-1"
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="filter-checkin">Check-in</Label>
-        <Input
-          id="filter-checkin"
-          type="date"
-          defaultValue={initialFilters.checkIn}
-          onChange={(e) => handleFilterChange("checkIn", e.target.value)}
-          min={new Date().toISOString().split("T")[0]}
-          className="mt-1"
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="filter-checkout">Check-out</Label>
-        <Input
-          id="filter-checkout"
-          type="date"
-          defaultValue={initialFilters.checkOut}
-          onChange={(e) => handleFilterChange("checkOut", e.target.value)}
-          min={initialFilters.checkIn || new Date().toISOString().split("T")[0]}
-          className="mt-1"
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="filter-guests">Guests</Label>
-        <Input
-          id="filter-guests"
-          type="number"
-          min="1"
-          max="10"
-          defaultValue={initialFilters.guests}
-          onChange={(e) => handleFilterChange("guests", e.target.value)}
-          className="mt-1"
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="filter-hometype">Home Type</Label>
-        <Select
-          id="filter-hometype"
-          onChange={(e) => handleFilterChange("homeType", e.target.value)}
-          className="mt-1"
-        >
-          <option value="">All types</option>
-          {Object.entries(HomeType).map(([key, value]) => (
-            <option key={key} value={value}>
-              {value.charAt(0).toUpperCase() + value.slice(1)}
-            </option>
+        <h3 className="font-semibold mb-4">Amenities</h3>
+        <div className="space-y-2 max-h-48 overflow-y-auto">
+          {AMENITIES.map((amenity) => (
+            <div key={amenity} className="flex items-center space-x-2">
+              <Checkbox
+                id={`amenity-${amenity}`}
+                checked={selectedAmenities.includes(amenity)}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setSelectedAmenities([...selectedAmenities, amenity]);
+                  } else {
+                    setSelectedAmenities(selectedAmenities.filter(a => a !== amenity));
+                  }
+                }}
+              />
+              <Label
+                htmlFor={`amenity-${amenity}`}
+                className="text-sm cursor-pointer"
+              >
+                {amenity}
+              </Label>
+            </div>
           ))}
-        </Select>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold mb-4">Creative Features</h3>
+        <div className="space-y-2 max-h-48 overflow-y-auto">
+          {CREATIVE_FEATURES.map((feature) => (
+            <div key={feature} className="flex items-center space-x-2">
+              <Checkbox
+                id={`feature-${feature}`}
+                checked={selectedFeatures.includes(feature)}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setSelectedFeatures([...selectedFeatures, feature]);
+                  } else {
+                    setSelectedFeatures(selectedFeatures.filter(f => f !== feature));
+                  }
+                }}
+              />
+              <Label
+                htmlFor={`feature-${feature}`}
+                className="text-sm cursor-pointer"
+              >
+                {feature}
+              </Label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <Button onClick={applyFilters} className="flex-1">
+          Apply Filters
+        </Button>
+        <Button onClick={clearFilters} variant="outline">
+          Clear
+        </Button>
       </div>
     </div>
   );

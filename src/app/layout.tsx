@@ -1,21 +1,23 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { Providers } from "@/components/Providers";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { Providers } from '@/components/Providers';
+import { Toaster } from '@/components/ui/toaster';
 
-const inter = Inter({ 
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "Musa Residency - Artist Home Exchange Platform",
-  description: "Connect with artists worldwide through creative space exchanges. Find inspiring residencies and share your artistic home with fellow creators.",
-  keywords: ["artist residency", "home exchange", "creative spaces", "artist community"],
+  title: 'Musa Residency - Creative Home Exchange Platform',
+  description: 'Exchange homes with artists and creatives worldwide. Find inspiring spaces for your next creative residency.',
   openGraph: {
-    title: "Musa Residency - Artist Home Exchange Platform",
-    description: "Connect with artists worldwide through creative space exchanges",
-    type: "website",
+    title: 'Musa Residency',
+    description: 'Creative home exchange platform for artists',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Musa Residency',
+    description: 'Creative home exchange platform for artists',
   },
 };
 
@@ -25,10 +27,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="min-h-screen bg-background font-sans antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
         <Providers>
           {children}
+          <Toaster />
         </Providers>
       </body>
     </html>

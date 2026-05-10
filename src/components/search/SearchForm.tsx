@@ -2,101 +2,93 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Calendar, MapPin, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export function SearchForm() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    location: '',
-    startDate: '',
-    endDate: '',
-    guests: '2',
-  });
+  const [location, setLocation] = useState('');
+  const [checkIn, setCheckIn] = useState('');
+  const [checkOut, setCheckOut] = useState('');
+  const [guests, setGuests] = useState('2');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const searchParams = new URLSearchParams();
-    Object.entries(formData).forEach(([key, value]) => {
-      if (value) {
-        searchParams.set(key, value);
-      }
-    });
-
-    router.push(`/search?${searchParams.toString()}`);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
+    const params = new URLSearchParams();
+    if (location) params.set('location', location);
+    if (checkIn) params.set('checkIn', checkIn);
+    if (checkOut) params.set('checkOut', checkOut);
+    if (guests && guests !== '2') params.set('guests', guests);
+    
+    router.push(`/listings?${params.toString()}`);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="card">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
-            Where to?
-          </label>
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-lg p-4">
+      <div className="grid md:grid-cols-4 gap-4 items-end">
+        <div className="relative">
+          <Label htmlFor="location" className="sr-only">Location</Label>
+          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
-            type="text"
             id="location"
-            name="location"
-            placeholder="City or region"
-            value={formData.location}
-            onChange={handleChange}
+            type="text"
+            placeholder="Where to?"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className="pl-10"
           />
         </div>
-
-        <div>
-          <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
-            Check-in
-          </label>
+        
+        <div className="relative">
+          <Label htmlFor="checkIn" className="sr-only">Check in</Label>
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
+            id="checkIn"
             type="date"
-            id="startDate"
-            name="startDate"
-            value={formData.startDate}
-            onChange={handleChange}
+            placeholder="Check in"
+            value={checkIn}
+            onChange={(e) => setCheckIn(e.target.value)}
+            className="pl-10"
           />
         </div>
-
-        <div>
-          <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-            Check-out
-          </label>
+        
+        <div className="relative">
+          <Label htmlFor="checkOut" className="sr-only">Check out</Label>
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
+            id="checkOut"
             type="date"
-            id="endDate"
-            name="endDate"
-            value={formData.endDate}
-            onChange={handleChange}
+            placeholder="Check out"
+            value={checkOut}
+            onChange={(e) => setCheckOut(e.target.value)}
+            className="pl-10"
           />
         </div>
-
-        <div>
-          <label htmlFor="guests" className="block text-sm font-medium text-gray-700 mb-1">
-            Guests
-          </label>
-          <Input
-            type="number"
-            id="guests"
-            name="guests"
-            min="1"
-            max="10"
-            value={formData.guests}
-            onChange={handleChange}
-          />
+        
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Label htmlFor="guests" className="sr-only">Guests</Label>
+            <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              id="guests"
+              type="number"
+              placeholder="Guests"
+              value={guests}
+              onChange={(e) => setGuests(e.target.value)}
+              min="1"
+              max="10"
+              className="pl-10"
+            />
+          </div>
+          <Button type="submit" size="icon">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </Button>
         </div>
-      </div>
-
-      <div className="mt-6">
-        <Button type="submit" size="lg" className="w-full">
-          Search Available Homes
-        </Button>
       </div>
     </form>
   );

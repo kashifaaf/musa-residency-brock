@@ -1,33 +1,24 @@
-import { redirect } from "next/navigation";
-import { validateRequest } from "@/lib/auth/session";
-import { SignInForm } from "@/components/auth/SignInForm";
-import Link from "next/link";
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
+import { SignInForm } from '@/components/auth/SignInForm';
 
 export default async function SignInPage() {
-  const { user } = await validateRequest();
-
-  if (user) {
-    redirect("/dashboard");
+  const session = await auth();
+  
+  if (session?.user) {
+    redirect('/dashboard');
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-bold tracking-tight">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-muted-foreground">
-            Or{" "}
-            <Link
-              href="/auth/signup"
-              className="font-medium text-primary hover:text-primary/80"
-            >
-              create a new account
-            </Link>
+    <div className="min-h-screen flex items-center justify-center bg-secondary/20">
+      <div className="max-w-md w-full mx-auto p-6">
+        <div className="bg-card rounded-lg shadow-lg p-8">
+          <h1 className="text-2xl font-bold text-center mb-6">Sign in to Musa Residency</h1>
+          <p className="text-center text-muted-foreground mb-8">
+            Connect with creative spaces worldwide
           </p>
+          <SignInForm />
         </div>
-        <SignInForm />
       </div>
     </div>
   );
