@@ -19,7 +19,7 @@ export const MAX_GUESTS_DEFAULT = 4;
 let __STRIPE_PUBLISHABLE_KEYInstance: string | null = null;
 export function getSTRIPE_PUBLISHABLE_KEY() {
   if (!__STRIPE_PUBLISHABLE_KEYInstance) {
-    __STRIPE_PUBLISHABLE_KEYInstance = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!;
+    __STRIPE_PUBLISHABLE_KEYInstance = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
   }
   return __STRIPE_PUBLISHABLE_KEYInstance;
 }

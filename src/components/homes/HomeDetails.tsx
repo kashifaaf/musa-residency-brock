@@ -1,6 +1,6 @@
 import { MapPin, Home as HomeIcon, Users, Bed, Bath, Wifi, Car, Wind } from "lucide-react";
 import { type Home } from "@/types";
-import { PROPERTY_TYPES, AMENITIES } from "@/lib/constants";
+import { PROPERTY_TYPES } from "@/lib/constants";
 
 interface HomeDetailsProps {
   home: Home;
