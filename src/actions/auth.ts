@@ -5,7 +5,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { isValidEmail, generateVerificationToken } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
-import { getAPP_URL } from "@/lib/constants";
+import { APP_NAME, getAPP_URL } from "@/lib/constants";
 import crypto from "crypto";
 
 type ActionResult<T = void> = {
@@ -71,14 +71,15 @@ export async function createUser(formData: FormData): Promise<ActionResult<{ use
     
     // Send verification email
     const verificationToken = generateVerificationToken();
+    const appUrl = getAPP_URL();
     await sendEmail({
       to: email,
-      subject: "Welcome to Musa Residency!",
-      text: `Please verify your email by clicking: ${getAPP_URL()}/verify-email?token=${verificationToken}`,
+      subject: `Welcome to ${APP_NAME}!`,
+      text: `Please verify your email by clicking: ${appUrl}/verify-email?token=${verificationToken}`,
       html: `
-        <h1>Welcome to Musa Residency!</h1>
+        <h1>Welcome to ${APP_NAME}!</h1>
         <p>Please verify your email by clicking the link below:</p>
-        <a href="${getAPP_URL()}/verify-email?token=${verificationToken}">Verify Email</a>
+        <a href="${appUrl}/verify-email?token=${verificationToken}">Verify Email</a>
       `,
     });
     
