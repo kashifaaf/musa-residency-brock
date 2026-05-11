@@ -32,3 +32,10 @@ export async function validateSession(token: string) {
   // Implement session validation
   return null;
 }
+
+// Main auth function that returns session data
+export async function auth() {
+  // Placeholder implementation - replace with actual auth logic
+  // This would typically check cookies/tokens and return user session
+  return null;
+}
