@@ -1,22 +1,9 @@
-import type { NextConfig } from "next";
+import { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  reactStrictMode: true,
-  serverExternalPackages: ["@neondatabase/serverless", "sharp"],
+  typedRoutes: true,
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "uploadthing.com",
-      },
-      {
-        protocol: "https",
-        hostname: "utfs.io",
-      },
-    ],
-  },
-  experimental: {
-    typedRoutes: true,
+    domains: ['images.unsplash.com', 'utfs.io'],
   },
 };
 
