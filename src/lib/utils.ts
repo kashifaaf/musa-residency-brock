@@ -1,48 +1,63 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { type ClassValue, clsx } from "clsx";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  return clsx(inputs);
 }
 
-export function formatCurrency(amount: number, currency: string = "USD") {
+export function formatCurrency(amount: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
   }).format(amount);
 }
 
-export function formatDate(date: Date | string) {
+export function formatDate(date: Date | string, format: "short" | "long" = "short"): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  
+  if (format === "short") {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(d);
+  }
+  
   return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
+    weekday: "long",
     year: "numeric",
-  }).format(new Date(date));
+    month: "long",
+    day: "numeric",
+  }).format(d);
 }
 
-export function getDaysFromNow(date: Date | string) {
+export function getDaysFromNow(date: Date | string): number {
+  const d = typeof date === "string" ? new Date(date) : date;
   const now = new Date();
-  const then = new Date(date);
-  const diffTime = Math.abs(then.getTime() - now.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
+  const diffTime = Math.abs(d.getTime() - now.getTime());
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
-export function getResponseDeadline(createdAt: Date | string) {
-  const date = new Date(createdAt);
-  date.setHours(date.getHours() + 24);
-  return date;
+export function getResponseDeadline(createdAt: Date | string): Date {
+  const d = typeof createdAt === "string" ? new Date(createdAt) : createdAt;
+  const deadline = new Date(d);
+  deadline.setHours(deadline.getHours() + 24);
+  return deadline;
 }
 
-export function calculateNights(checkIn: Date | string, checkOut: Date | string) {
-  const start = new Date(checkIn);
-  const end = new Date(checkOut);
-  const diffTime = Math.abs(end.getTime() - start.getTime());
-  const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return nights;
+export function isWithin24Hours(createdAt: Date | string): boolean {
+  const deadline = getResponseDeadline(createdAt);
+  return deadline > new Date();
 }
 
-export function truncateText(text: string, maxLength: number) {
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + "...";
+export function generateBookingCode(): string {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+export function truncate(str: string, length: number): string {
+  if (str.length <= length) return str;
+  return str.slice(0, length) + "...";
+}
+
+export async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

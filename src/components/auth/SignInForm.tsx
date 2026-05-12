@@ -1,107 +1,69 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Mail, Lock } from "lucide-react";
-import { signIn } from "@/actions/auth";
+import { signIn } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Github, Mail } from "lucide-react";
+import toast from "react-hot-toast";
 
-export function SignInForm() {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
-    
-    const formData = new FormData(e.currentTarget);
-    
+interface SignInFormProps {
+  callbackUrl?: string;
+  error?: string;
+}
+
+export function SignInForm({ callbackUrl = "/dashboard", error }: SignInFormProps) {
+  const [isLoading, setIsLoading] = useState<string | null>(null);
+
+  const handleSignIn = async (provider: string) => {
     try {
-      const result = await signIn(formData);
-      
-      if (!result.success) {
-        setError(result.error || "Failed to sign in");
-        return;
-      }
-      
-      // Redirect to dashboard or home
-      router.push("/dashboard");
-    } catch (err) {
-      setError("An unexpected error occurred");
+      setIsLoading(provider);
+      await signIn(provider, { callbackUrl });
+    } catch (error) {
+      toast.error("Failed to sign in");
     } finally {
-      setIsLoading(false);
+      setIsLoading(null);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <Card className="p-8">
       {error && (
-        <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">
-          {error}
+        <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md mb-6">
+          {error === "OAuthAccountNotLinked"
+            ? "This email is already associated with another account."
+            : "An error occurred during sign in. Please try again."}
         </div>
       )}
-      
-      <div>
-        <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700">
-          Email address
-        </label>
-        <div className="relative">
-          <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-3 focus:border-primary-500 focus:outline-none"
-            placeholder="john@example.com"
-          />
-        </div>
+
+      <div className="space-y-4">
+        <Button
+          onClick={() => handleSignIn("google")}
+          variant="outline"
+          className="w-full"
+          disabled={isLoading !== null}
+        >
+          <Mail className="mr-2 h-4 w-4" />
+          {isLoading === "google" ? "Signing in..." : "Continue with Google"}
+        </Button>
+
+        <Button
+          onClick={() => handleSignIn("github")}
+          variant="outline"
+          className="w-full"
+          disabled={isLoading !== null}
+        >
+          <Github className="mr-2 h-4 w-4" />
+          {isLoading === "github" ? "Signing in..." : "Continue with GitHub"}
+        </Button>
       </div>
-      
-      <div>
-        <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700">
-          Password
-        </label>
-        <div className="relative">
-          <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-3 focus:border-primary-500 focus:outline-none"
-            placeholder="••••••••"
-          />
-        </div>
-      </div>
-      
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <input
-            id="remember"
-            name="remember"
-            type="checkbox"
-            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-          <label htmlFor="remember" className="ml-2 text-sm text-gray-700">
-            Remember me
-          </label>
-        </div>
-        
-        <Link href="/forgot-password" className="text-sm text-primary-600 hover:text-primary-500">
-          Forgot password?
-        </Link>
-      </div>
-      
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="w-full rounded-lg bg-primary-600 py-3 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50"
-      >
-        {isLoading ? "Signing in..." : "Sign in"}
-      </button>
-    </form>
+
+      <Separator className="my-6" />
+
+      <p className="text-center text-sm text-muted-foreground">
+        By signing in, you agree to our Terms of Service and Privacy Policy
+      </p>
+    </Card>
   );
 }

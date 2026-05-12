@@ -1,31 +1,35 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
-const inter = Inter({ 
-  subsets: ["latin"],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: "Musa Residency - Creative Home Exchange",
-  description: "Connect with artists worldwide through curated home exchanges. Find inspiring spaces and authentic cultural experiences.",
+  title: "Musa Residency - Artist Home Exchange Platform",
+  description: "Connect with artists worldwide through curated home exchanges. Find inspiring creative spaces and authentic cultural experiences.",
+  keywords: "artist residency, home exchange, creative spaces, cultural exchange, remote work",
+  authors: [{ name: "Musa Residency" }],
   openGraph: {
-    title: "Musa Residency - Creative Home Exchange",
-    description: "Connect with artists worldwide through curated home exchanges",
+    title: "Musa Residency - Artist Home Exchange",
+    description: "Exchange homes with artists and creatives worldwide",
     type: "website",
+    url: "https://musa-residency.com",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Musa Residency",
+    description: "Artist home exchange platform",
   },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" className={inter.className}>
-      <body className="antialiased">
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="min-h-screen bg-background font-sans antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

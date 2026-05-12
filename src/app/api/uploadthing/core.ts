@@ -1,34 +1,61 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
+import { auth } from "@/lib/auth";
+import { getDb } from "@/lib/db";
+import { listingPhotos } from "@/lib/db/schema";
+import { eq, and, count } from "drizzle-orm";
 
 const f = createUploadthing();
 
-// FileRouter for your app, can contain multiple FileRoutes
 export const ourFileRouter = {
-  // Define as many FileRoutes as you like, each with a unique routeSlug
-  homePhotos: f({ image: { maxFileSize: "16MB", maxFileCount: 20 } })
+  listingImage: f({ image: { maxFileSize: "8MB", maxFileCount: 20 } })
     .middleware(async ({ req }) => {
-      // This code runs on your server before upload
-      // Check if user is authenticated
-      // For MVP, we'll allow uploads without auth
-      return { userId: "temp-user-id" };
+      const session = await auth();
+      if (!session?.user?.id) throw new UploadThingError("Unauthorized");
+      
+      const listingId = req.headers.get("x-listing-id");
+      if (!listingId) throw new UploadThingError("No listing ID provided");
+      
+      // Check photo count
+      const db = getDb();
+      const photoCount = await db
+        .select({ count: count() })
+        .from(listingPhotos)
+        .where(eq(listingPhotos.listingId, listingId));
+      
+      if (photoCount[0].count >= 20) {
+        throw new UploadThingError("Maximum 20 photos per listing");
+      }
+      
+      return { userId: session.user.id, listingId };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      // This code RUNS ON YOUR SERVER after upload
-      console.log("Upload complete for userId:", metadata.userId);
-      console.log("file url", file.url);
+      const db = getDb();
       
-      // Return data that will be available in onClientUploadComplete
-      return { uploadedBy: metadata.userId, url: file.url };
+      // Get current max order
+      const maxOrder = await db
+        .select({ order: listingPhotos.order })
+        .from(listingPhotos)  
+        .where(eq(listingPhotos.listingId, metadata.listingId))
+        .orderBy(listingPhotos.order)
+        .limit(1);
+      
+      await db.insert(listingPhotos).values({
+        listingId: metadata.listingId,
+        url: file.url,
+        order: maxOrder[0]?.order ? maxOrder[0].order + 1 : 0,
+      });
+      
+      return { uploadedBy: metadata.userId };
     }),
     
   profileImage: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
     .middleware(async ({ req }) => {
-      // Check auth
-      return { userId: "temp-user-id" };
+      const session = await auth();
+      if (!session?.user?.id) throw new UploadThingError("Unauthorized");
+      return { userId: session.user.id };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      console.log("Profile image uploaded for userId:", metadata.userId);
       return { uploadedBy: metadata.userId, url: file.url };
     }),
 } satisfies FileRouter;
