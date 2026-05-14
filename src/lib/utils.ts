@@ -1,63 +1,84 @@
-import { type ClassValue, clsx } from "clsx";
+import { twMerge } from 'tailwind-merge';
+import { format, formatDistanceToNow } from 'date-fns';
 
-export function cn(...inputs: ClassValue[]) {
-  return clsx(inputs);
-}
+// Define ClassValue type locally to avoid dependency on class-variance-authority
+type ClassValue = 
+  | string 
+  | number 
+  | boolean 
+  | undefined 
+  | null 
+  | { [key: string]: any }
+  | ClassValue[];
 
-export function formatCurrency(amount: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(amount);
-}
-
-export function formatDate(date: Date | string, format: "short" | "long" = "short"): string {
-  const d = typeof date === "string" ? new Date(date) : date;
+// Native clsx implementation to avoid module resolution issues
+function clsx(...inputs: ClassValue[]): string {
+  const classes: string[] = [];
   
-  if (format === "short") {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(d);
+  for (const input of inputs) {
+    if (!input) continue;
+    
+    if (typeof input === 'string') {
+      classes.push(input);
+    } else if (Array.isArray(input)) {
+      const result = clsx(...input);
+      if (result) classes.push(result);
+    } else if (typeof input === 'object') {
+      for (const [key, value] of Object.entries(input)) {
+        if (value) classes.push(key);
+      }
+    }
   }
   
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(d);
+  return classes.join(' ');
 }
 
-export function getDaysFromNow(date: Date | string): number {
-  const d = typeof date === "string" ? new Date(date) : date;
-  const now = new Date();
-  const diffTime = Math.abs(d.getTime() - now.getTime());
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }
 
-export function getResponseDeadline(createdAt: Date | string): Date {
-  const d = typeof createdAt === "string" ? new Date(createdAt) : createdAt;
-  const deadline = new Date(d);
-  deadline.setHours(deadline.getHours() + 24);
-  return deadline;
+export function formatDate(date: Date | string | number, formatString: string = 'PPP'): string {
+  return format(new Date(date), formatString);
 }
 
-export function isWithin24Hours(createdAt: Date | string): boolean {
-  const deadline = getResponseDeadline(createdAt);
-  return deadline > new Date();
+export function formatRelativeDate(date: Date | string | number): string {
+  return formatDistanceToNow(new Date(date), { addSuffix: true });
 }
 
-export function generateBookingCode(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
+export function formatCurrency(amount: number | string, currency: string = 'USD'): string {
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+  });
+  return formatter.format(typeof amount === 'string' ? parseFloat(amount) : amount);
+}
+
+export function generateId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+export function calculateNights(checkIn: Date, checkOut: Date): number {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.round((checkOut.getTime() - checkIn.getTime()) / msPerDay);
+}
+
+export function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
 }
 
 export function truncate(str: string, length: number): string {
   if (str.length <= length) return str;
-  return str.slice(0, length) + "...";
+  return str.substring(0, length) + '...';
 }
 
-export async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
 }

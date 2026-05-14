@@ -1,82 +1,73 @@
 "use server";
 
-import { auth } from "@/lib/auth";
-import { getDb } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { profileSchema } from "@/types";
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { auth } from '@/lib/auth';
+import { getDb } from '@/lib/db';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
+import type { UpdateUserProfileInput, ApiResponse } from '@/types';
 
-export async function updateProfile(
-  userId: string,
-  data: z.infer<typeof profileSchema>
-) {
+export async function updateProfile(input: UpdateUserProfileInput): Promise<ApiResponse<void>> {
   try {
     const session = await auth();
-    if (!session?.user?.id || session.user.id !== userId) {
-      return { success: false, error: "Unauthorized" };
+    if (!session) {
+      return { success: false, error: 'Unauthorized' };
     }
 
-    const validated = profileSchema.parse(data);
     const db = getDb();
-
+    
+    // Update user profile
     await db
       .update(users)
       .set({
-        name: validated.name,
-        bio: validated.bio,
-        location: validated.location,
-        workInfo: validated.workInfo,
-        socialLinks: validated.socialLinks,
+        ...input,
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userId));
+      .where(eq(users.id, session.user.id));
 
-    revalidatePath("/dashboard");
-    revalidatePath("/onboarding");
+    revalidatePath('/profile');
+    revalidatePath('/dashboard');
+
     return { success: true };
   } catch (error) {
-    console.error("Update profile error:", error);
-    return { success: false, error: "Failed to update profile" };
+    console.error('Error updating profile:', error);
+    return { success: false, error: 'Failed to update profile' };
   }
 }
 
-export async function switchToHost(userId: string) {
+export async function becomeHost(): Promise<ApiResponse<void>> {
   try {
     const session = await auth();
-    if (!session?.user?.id || session.user.id !== userId) {
-      return { success: false, error: "Unauthorized" };
+    if (!session) {
+      return { success: false, error: 'Unauthorized' };
     }
 
     const db = getDb();
+    
+    // Check if user has completed profile
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+    });
 
-    // Get current user
-    const user = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (!user[0]) {
-      return { success: false, error: "User not found" };
+    if (!user?.name || !user?.bio || !user?.location) {
+      return { success: false, error: 'Please complete your profile before becoming a host' };
     }
 
-    // Update role
-    const newRole = user[0].role === "guest" ? "both" : user[0].role;
-    
+    // Update host status
     await db
       .update(users)
       .set({
-        role: newRole,
+        isHost: true,
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userId));
+      .where(eq(users.id, session.user.id));
 
-    revalidatePath("/dashboard");
+    revalidatePath('/profile');
+    revalidatePath('/dashboard');
+
     return { success: true };
   } catch (error) {
-    console.error("Switch to host error:", error);
-    return { success: false, error: "Failed to switch role" };
+    console.error('Error becoming host:', error);
+    return { success: false, error: 'Failed to update host status' };
   }
 }

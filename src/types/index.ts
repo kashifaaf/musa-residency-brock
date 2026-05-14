@@ -1,108 +1,116 @@
-import { z } from "zod";
 import type { 
   users, 
-  listings, 
-  listingPhotos, 
+  homes, 
   availability, 
   bookings, 
   payments, 
-  messages 
-} from "@/lib/db/schema";
+  messages, 
+  notifications 
+} from '@/lib/db/schema';
 
 // Database type exports
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
-export type Listing = typeof listings.$inferSelect;
-export type NewListing = typeof listings.$inferInsert;
-export type ListingPhoto = typeof listingPhotos.$inferSelect;
-export type NewListingPhoto = typeof listingPhotos.$inferInsert;
+
+export type Home = typeof homes.$inferSelect;
+export type NewHome = typeof homes.$inferInsert;
+
 export type Availability = typeof availability.$inferSelect;
 export type NewAvailability = typeof availability.$inferInsert;
+
 export type Booking = typeof bookings.$inferSelect;
 export type NewBooking = typeof bookings.$inferInsert;
+
 export type Payment = typeof payments.$inferSelect;
 export type NewPayment = typeof payments.$inferInsert;
+
 export type Message = typeof messages.$inferSelect;
 export type NewMessage = typeof messages.$inferInsert;
 
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
+
 // Extended types with relations
-export type ListingWithRelations = Listing & {
+export type HomeWithHost = Home & {
   host: User;
-  photos: ListingPhoto[];
-  availability?: Availability[];
 };
 
-export type BookingWithRelations = Booking & {
-  listing: ListingWithRelations;
+export type HomeWithAvailability = Home & {
+  availability: Availability[];
+};
+
+export type BookingWithDetails = Booking & {
+  home: Home;
   guest: User;
   host: User;
-  payment?: Payment;
-  messages?: Message[];
+  payment?: Payment | null;
 };
 
-// Form schemas
-export const signUpSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
+export type MessageWithUsers = Message & {
+  sender: User;
+  recipient: User;
+};
 
-export const profileSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  bio: z.string().max(500, "Bio must be less than 500 characters").optional(),
-  location: z.string().min(2, "Location is required"),
-  workInfo: z.string().max(200, "Work info must be less than 200 characters").optional(),
-  socialLinks: z.object({
-    website: z.string().url().optional().or(z.literal("")),
-    instagram: z.string().optional(),
-    linkedin: z.string().optional(),
-  }).optional(),
-});
+// Form/API types
+export type CreateHomeInput = {
+  title: string;
+  description: string;
+  address: string;
+  city: string;
+  state?: string;
+  country: string;
+  amenities: {
+    bedrooms: number;
+    bathrooms: number;
+    workspace: boolean;
+    wifi: boolean;
+    kitchen: boolean;
+    parking: boolean;
+    artStudio?: boolean;
+    instruments?: boolean;
+    other: string[];
+  };
+  houseRules?: string;
+  images: string[];
+};
 
-export const listingSchema = z.object({
-  title: z.string().min(5, "Title must be at least 5 characters"),
-  description: z.string().min(100, "Description must be at least 100 characters"),
-  address: z.string().min(5, "Address is required"),
-  city: z.string().min(2, "City is required"),
-  country: z.string().min(2, "Country is required"),
-  propertyType: z.string().min(2, "Property type is required"),
-  maxGuests: z.number().min(1).max(10),
-  bedrooms: z.number().min(0).max(10),
-  bathrooms: z.number().min(0.5).max(10).multipleOf(0.5),
-  amenities: z.array(z.string()),
-  creativeAmenities: z.array(z.string()),
-  houseRules: z.string().max(1000).optional(),
-  neighborhoodDescription: z.string().max(500).optional(),
-  pricePerNight: z.number().min(0),
-  minimumStay: z.number().min(1).max(365),
-});
+export type CreateBookingInput = {
+  homeId: string;
+  checkIn: Date;
+  checkOut: Date;
+  guestCount: number;
+  message?: string;
+};
 
-export const availabilitySchema = z.object({
-  startDate: z.date(),
-  endDate: z.date(),
-}).refine((data) => data.endDate > data.startDate, {
-  message: "End date must be after start date",
-  path: ["endDate"],
-});
+export type UpdateUserProfileInput = {
+  name?: string;
+  bio?: string;
+  location?: string;
+  workInfo?: string;
+  profileImage?: string;
+  socialLinks?: {
+    website?: string;
+    instagram?: string;
+    linkedin?: string;
+    twitter?: string;
+  };
+};
 
-export const bookingRequestSchema = z.object({
-  listingId: z.string().uuid(),
-  checkIn: z.date(),
-  checkOut: z.date(),
-  guestCount: z.number().min(1).max(10),
-  guestMessage: z.string().max(1000).optional(),
-}).refine((data) => data.checkOut > data.checkIn, {
-  message: "Check-out must be after check-in",
-  path: ["checkOut"],
-});
+export type SearchFilters = {
+  location?: string;
+  checkIn?: Date;
+  checkOut?: Date;
+  guestCount?: number;
+  amenities?: string[];
+  priceMin?: number;
+  priceMax?: number;
+};
 
-// API response types
+// Response types
 export type ApiResponse<T> = {
-  success: true;
-  data: T;
-} | {
-  success: false;
-  error: string;
+  success: boolean;
+  data?: T;
+  error?: string;
 };
 
 export type PaginatedResponse<T> = {
@@ -110,30 +118,28 @@ export type PaginatedResponse<T> = {
   total: number;
   page: number;
   pageSize: number;
-  totalPages: number;
+  hasMore: boolean;
 };
 
-// Search/filter types
-export type ListingSearchParams = {
-  location?: string;
-  checkIn?: Date;
-  checkOut?: Date;
-  guests?: number;
-  minPrice?: number;
-  maxPrice?: number;
-  propertyType?: string;
-  amenities?: string[];
+// Auth types
+export type SessionUser = {
+  id: string;
+  email: string;
+  name?: string;
+  role: 'user' | 'admin';
+  isHost: boolean;
 };
 
-export type BookingFilters = {
-  status?: "pending" | "approved" | "declined" | "cancelled" | "completed";
-  role?: "guest" | "host";
-  startDate?: Date;
-  endDate?: Date;
-};
+// Notification types
+export type NotificationType = 
+  | 'booking_request'
+  | 'booking_approved'
+  | 'booking_declined'
+  | 'booking_cancelled'
+  | 'message'
+  | 'payment_success'
+  | 'payment_failed';
 
-// Utility types
-export type UserRole = "guest" | "host" | "both";
-export type BookingStatus = "pending" | "approved" | "declined" | "cancelled" | "completed";
-export type PaymentStatus = "pending" | "authorized" | "captured" | "refunded" | "failed";
-export type ListingStatus = "draft" | "published" | "paused" | "archived";
+// Status types
+export type BookingStatus = 'pending' | 'approved' | 'declined' | 'cancelled' | 'completed';
+export type PaymentStatus = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded';
