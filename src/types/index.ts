@@ -1,145 +1,79 @@
-import type { 
-  users, 
-  homes, 
-  availability, 
-  bookings, 
-  payments, 
-  messages, 
-  notifications 
-} from '@/lib/db/schema';
+export type BookingStatus = 'pending' | 'approved' | 'declined' | 'cancelled' | 'completed'
+export type PaymentStatus = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded'
 
-// Database type exports
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
+export interface SearchParams {
+  location?: string
+  checkIn?: string
+  checkOut?: string
+  guests?: number
+  page?: number
+  limit?: number
+}
 
-export type Home = typeof homes.$inferSelect;
-export type NewHome = typeof homes.$inferInsert;
+export interface BookingRequest {
+  homeId: string
+  checkIn: string
+  checkOut: string
+  guests: number
+  message?: string
+}
 
-export type Availability = typeof availability.$inferSelect;
-export type NewAvailability = typeof availability.$inferInsert;
+export interface HomeFilters {
+  minPrice?: number
+  maxPrice?: number
+  bedrooms?: number
+  bathrooms?: number
+  amenities?: string[]
+  creativeAmenities?: string[]
+}
 
-export type Booking = typeof bookings.$inferSelect;
-export type NewBooking = typeof bookings.$inferInsert;
+export interface PaginationParams {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
 
-export type Payment = typeof payments.$inferSelect;
-export type NewPayment = typeof payments.$inferInsert;
+export interface ApiResponse<T> {
+  data?: T
+  error?: string
+  message?: string
+}
 
-export type Message = typeof messages.$inferSelect;
-export type NewMessage = typeof messages.$inferInsert;
+export interface SessionUser {
+  id: string
+  email: string
+  name: string
+  image?: string
+  isHost: boolean
+}
 
-export type Notification = typeof notifications.$inferSelect;
-export type NewNotification = typeof notifications.$inferInsert;
+export interface UploadedFile {
+  url: string
+  key: string
+  name: string
+  size: number
+}
 
-// Extended types with relations
-export type HomeWithHost = Home & {
-  host: User;
-};
+export interface Coordinates {
+  latitude: number
+  longitude: number
+}
 
-export type HomeWithAvailability = Home & {
-  availability: Availability[];
-};
+export interface DateRange {
+  from: Date
+  to: Date
+}
 
-export type BookingWithDetails = Booking & {
-  home: Home;
-  guest: User;
-  host: User;
-  payment?: Payment | null;
-};
-
-export type MessageWithUsers = Message & {
-  sender: User;
-  recipient: User;
-};
-
-// Form/API types
-export type CreateHomeInput = {
-  title: string;
-  description: string;
-  address: string;
-  city: string;
-  state?: string;
-  country: string;
-  amenities: {
-    bedrooms: number;
-    bathrooms: number;
-    workspace: boolean;
-    wifi: boolean;
-    kitchen: boolean;
-    parking: boolean;
-    artStudio?: boolean;
-    instruments?: boolean;
-    other: string[];
-  };
-  houseRules?: string;
-  images: string[];
-};
-
-export type CreateBookingInput = {
-  homeId: string;
-  checkIn: Date;
-  checkOut: Date;
-  guestCount: number;
-  message?: string;
-};
-
-export type UpdateUserProfileInput = {
-  name?: string;
-  bio?: string;
-  location?: string;
-  workInfo?: string;
-  profileImage?: string;
-  socialLinks?: {
-    website?: string;
-    instagram?: string;
-    linkedin?: string;
-    twitter?: string;
-  };
-};
-
-export type SearchFilters = {
-  location?: string;
-  checkIn?: Date;
-  checkOut?: Date;
-  guestCount?: number;
-  amenities?: string[];
-  priceMin?: number;
-  priceMax?: number;
-};
-
-// Response types
-export type ApiResponse<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-};
-
-export type PaginatedResponse<T> = {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  hasMore: boolean;
-};
-
-// Auth types
-export type SessionUser = {
-  id: string;
-  email: string;
-  name?: string;
-  role: 'user' | 'admin';
-  isHost: boolean;
-};
-
-// Notification types
-export type NotificationType = 
-  | 'booking_request'
-  | 'booking_approved'
-  | 'booking_declined'
-  | 'booking_cancelled'
-  | 'message'
-  | 'payment_success'
-  | 'payment_failed';
-
-// Status types
-export type BookingStatus = 'pending' | 'approved' | 'declined' | 'cancelled' | 'completed';
-export type PaymentStatus = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded';
+export interface NotificationPreferences {
+  email: {
+    bookingRequests: boolean
+    bookingUpdates: boolean
+    messages: boolean
+    marketing: boolean
+  }
+  sms?: {
+    bookingRequests: boolean
+    bookingUpdates: boolean
+  }
+}

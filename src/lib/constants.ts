@@ -1,57 +1,102 @@
-export const APP_NAME = 'Musa Residency';
-export const APP_DESCRIPTION = 'Connect with artists worldwide through creative space exchanges';
+// Application constants
+export const APP_NAME = 'Musa Residency'
+export const APP_DESCRIPTION = 'Artist Home Exchange Platform'
 
-export const BOOKING_STATUSES = {
-  PENDING: 'pending',
-  APPROVED: 'approved',
-  DECLINED: 'declined',
-  CANCELLED: 'cancelled',
-  COMPLETED: 'completed',
-} as const;
+export function getAPP_URL(): string {
+  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+}
 
-export const PAYMENT_STATUSES = {
-  PENDING: 'pending',
-  AUTHORIZED: 'authorized',
-  CAPTURED: 'captured',
-  FAILED: 'failed',
-  REFUNDED: 'refunded',
-} as const;
+export const APP_URL = getAPP_URL()
 
-export const NOTIFICATION_TYPES = {
-  BOOKING_REQUEST: 'booking_request',
-  BOOKING_APPROVED: 'booking_approved',
-  BOOKING_DECLINED: 'booking_declined',
-  BOOKING_CANCELLED: 'booking_cancelled',
-  MESSAGE: 'message',
-  PAYMENT_SUCCESS: 'payment_success',
-  PAYMENT_FAILED: 'payment_failed',
-} as const;
+// Pagination
+export const DEFAULT_PAGE_SIZE = 12
+export const MAX_PAGE_SIZE = 100
 
-export const USER_ROLES = {
-  USER: 'user',
-  ADMIN: 'admin',
-} as const;
+// Booking constraints
+export const MIN_STAY_DAYS = 30
+export const MAX_GUESTS = 10
+export const BOOKING_RESPONSE_HOURS = 24
 
-export const RESPONSE_TIME_LIMIT = 24; // hours
+// File upload
+export const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+export const MAX_HOME_IMAGES = 20
 
-export const MINIMUM_STAY = 30; // days
+// Search
+export const DEFAULT_SEARCH_RADIUS_KM = 50
+export const MAX_SEARCH_RADIUS_KM = 200
 
-export const DEFAULT_CURRENCY = 'USD';
+// Amenities
+export const STANDARD_AMENITIES = [
+  'WiFi',
+  'Kitchen',
+  'Washer',
+  'Dryer',
+  'Air conditioning',
+  'Heating',
+  'Dedicated workspace',
+  'TV',
+  'Hair dryer',
+  'Iron',
+  'Pool',
+  'Hot tub',
+  'Free parking',
+  'EV charger',
+  'Crib',
+  'Gym',
+  'BBQ grill',
+  'Breakfast',
+  'Indoor fireplace',
+  'Smoking allowed',
+  'Pets allowed',
+  'Wheelchair accessible',
+] as const
 
-export const SUPPORTED_IMAGE_FORMATS = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+export const CREATIVE_AMENITIES = [
+  'Art studio',
+  'Music room',
+  'Recording equipment',
+  'Photography studio',
+  'Darkroom',
+  'Pottery kiln',
+  'Woodworking tools',
+  'Sewing machine',
+  'Drawing tablet',
+  'Musical instruments',
+  'Art supplies',
+  'Gallery space',
+  'Performance space',
+  'Library',
+  'Natural light',
+  'Inspiring views',
+] as const
 
-export const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+// Response time thresholds (hours)
+export const RESPONSE_TIME_EXCELLENT = 1
+export const RESPONSE_TIME_GOOD = 12
+export const RESPONSE_TIME_FAIR = 24
 
-export const MAX_IMAGES_PER_HOME = 10;
+// Visibility penalties
+export const PENALTY_NO_RESPONSE_DAYS = 7
+export const PENALTY_LOW_RESPONSE_RATE = 0.5 // 50%
 
-export const VISIBILITY_PENALTY_THRESHOLD = 70; // response rate percentage
+// Currency
+export const DEFAULT_CURRENCY = 'USD'
+export const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD'] as const
 
-export const PAGINATION = {
-  DEFAULT_PAGE_SIZE: 12,
-  MAX_PAGE_SIZE: 50,
-} as const;
+// Map defaults
+export const DEFAULT_MAP_CENTER = { lat: 40.7128, lng: -74.0060 } // New York
+export const DEFAULT_MAP_ZOOM = 12
 
-export const STRIPE_CONFIG = {
-  PAYMENT_METHOD_TYPES: ['card'],
-  CURRENCY: 'usd',
-} as const;
+// Email
+export const SYSTEM_EMAIL = 'no-reply@musaresidency.com'
+export const SUPPORT_EMAIL = 'support@musaresidency.com'
+
+// Cache TTL (seconds)
+export const CACHE_TTL_SHORT = 60 // 1 minute
+export const CACHE_TTL_MEDIUM = 300 // 5 minutes
+export const CACHE_TTL_LONG = 3600 // 1 hour
+
+// Rate limiting
+export const RATE_LIMIT_REQUESTS = 100
+export const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute

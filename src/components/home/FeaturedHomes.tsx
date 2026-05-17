@@ -1,159 +1,48 @@
-import { HomeCard } from './HomeCard';
-
-// Static placeholder data for build time
-const placeholderHomes = [
-  {
-    id: '1',
-    hostId: '1',
-    title: 'Cozy Artist Loft in Brooklyn',
-    description: 'Beautiful space perfect for creative minds',
-    address: '123 Art Street',
-    city: 'Brooklyn',
-    state: 'NY',
-    country: 'USA',
-    latitude: null,
-    longitude: null,
-    amenities: {
-      bedrooms: 2,
-      bathrooms: 1,
-      workspace: true,
-      wifi: true,
-      kitchen: true,
-      parking: false,
-      artStudio: true,
-      instruments: false,
-      other: []
-    },
-    houseRules: null,
-    images: ['/placeholder-home.jpg'],
-    isActive: true,
-    visibilityScore: 100,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    host: {
-      id: '1',
-      name: 'Artist Host',
-      email: 'host@example.com',
-      emailVerified: null,
-      image: null,
-      bio: 'Professional artist',
-      location: 'Brooklyn, NY',
-      workInfo: null,
-      profileImage: null,
-      socialLinks: null,
-      role: 'user' as const,
-      isHost: true,
-      responseRate: null,
-      averageResponseTime: null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-  },
-  {
-    id: '2',
-    hostId: '2',
-    title: 'Modern Studio in Berlin',
-    description: 'Minimalist space with great natural light',
-    address: '456 Creative Ave',
-    city: 'Berlin',
-    state: null,
-    country: 'Germany',
-    latitude: null,
-    longitude: null,
-    amenities: {
-      bedrooms: 1,
-      bathrooms: 1,
-      workspace: true,
-      wifi: true,
-      kitchen: true,
-      parking: true,
-      artStudio: false,
-      instruments: true,
-      other: []
-    },
-    houseRules: null,
-    images: ['/placeholder-home.jpg'],
-    isActive: true,
-    visibilityScore: 95,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    host: {
-      id: '2',
-      name: 'Creative Host',
-      email: 'host2@example.com',
-      emailVerified: null,
-      image: null,
-      bio: 'Musician and designer',
-      location: 'Berlin, Germany',
-      workInfo: null,
-      profileImage: null,
-      socialLinks: null,
-      role: 'user' as const,
-      isHost: true,
-      responseRate: null,
-      averageResponseTime: null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-  },
-  {
-    id: '3',
-    hostId: '3',
-    title: 'Charming Cottage in Provence',
-    description: 'Peaceful retreat surrounded by lavender fields',
-    address: '789 Lavender Lane',
-    city: 'Provence',
-    state: null,
-    country: 'France',
-    latitude: null,
-    longitude: null,
-    amenities: {
-      bedrooms: 3,
-      bathrooms: 2,
-      workspace: true,
-      wifi: true,
-      kitchen: true,
-      parking: true,
-      artStudio: true,
-      instruments: false,
-      other: ['Garden', 'Fireplace']
-    },
-    houseRules: null,
-    images: ['/placeholder-home.jpg'],
-    isActive: true,
-    visibilityScore: 98,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    host: {
-      id: '3',
-      name: 'Rural Host',
-      email: 'host3@example.com',
-      emailVerified: null,
-      image: null,
-      bio: 'Writer and painter',
-      location: 'Provence, France',
-      workInfo: null,
-      profileImage: null,
-      socialLinks: null,
-      role: 'user' as const,
-      isHost: true,
-      responseRate: null,
-      averageResponseTime: null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-  }
-];
+import { getDb } from '@/lib/db'
+import { homes, users } from '@/lib/db/schema'
+import { eq, and } from 'drizzle-orm'
+import { HomeCard } from '@/components/homes/HomeCard'
 
 export async function FeaturedHomes() {
-  // Use static data during build time to avoid database dependency
-  const featuredHomes = placeholderHomes;
+  let featuredHomes: { home: typeof homes.$inferSelect; host: typeof users.$inferSelect | null }[] = []
+
+  try {
+    const db = getDb()
+    featuredHomes = await db
+      .select({
+        home: homes,
+        host: users,
+      })
+      .from(homes)
+      .leftJoin(users, eq(homes.hostId, users.id))
+      .where(and(eq(homes.isActive, true)))
+      .limit(6)
+  } catch (error) {
+    // Database table may not exist yet (e.g., during build)
+    console.warn('Failed to fetch featured homes:', error instanceof Error ? error.message : error)
+    return null
+  }
+
+  if (featuredHomes.length === 0) {
+    return null
+  }
 
   return (
-    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {featuredHomes.map((home) => (
-        <HomeCard key={home.id} home={home} />
-      ))}
-    </div>
-  );
+    <section className="py-20 bg-gray-50">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold mb-4">Featured Creative Spaces</h2>
+          <p className="text-xl text-gray-600">
+            Discover inspiring homes and studios from our artist community
+          </p>
+        </div>
+        
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {featuredHomes.map(({ home, host }) => (
+            <HomeCard key={home.id} home={home} host={host!} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
 }

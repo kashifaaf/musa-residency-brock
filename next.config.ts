@@ -1,19 +1,36 @@
-import type { NextConfig } from 'next';
+import type { NextConfig } from 'next'
 
-const nextConfig: NextConfig = {
-  serverExternalPackages: ['@neondatabase/serverless'],
+const config: NextConfig = {
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'uploadthing.com',
+        hostname: 'utfs.io',
+        pathname: '/a/**',
       },
       {
         protocol: 'https',
-        hostname: 'utfs.io',
+        hostname: 'uploadthing.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+        pathname: '/**',
       },
     ],
   },
-  };
+  serverExternalPackages: ['@neondatabase/serverless'],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
+}
 
-export default nextConfig;
+export default config

@@ -1,49 +1,44 @@
-import { notFound } from 'next/navigation';
-import { getDb } from '@/lib/db';
-import { HomeDetails } from '@/components/home/HomeDetails';
-import { BookingCard } from '@/components/booking/BookingCard';
-import { auth } from '@/lib/auth';
+import { notFound } from 'next/navigation'
+import { getDb } from '@/lib/db'
+import { homes, users } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
+import { Header } from '@/components/layout/Header'
+import { Footer } from '@/components/layout/Footer'
+import { HomeDetails } from '@/components/homes/HomeDetails'
 
-export default async function HomeDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const session = await auth();
-  const db = getDb();
+export const dynamic = 'force-dynamic'
 
-  const home = await db.query.homes.findFirst({
-    where: (homes, { eq }) => eq(homes.id, id),
-    with: {
-      host: true,
-      availability: {
-        where: (availability, { gte }) => gte(availability.endDate, new Date()),
-        orderBy: (availability, { asc }) => asc(availability.startDate),
-      },
-    },
-  });
+interface HomePageProps {
+  params: Promise<{ id: string }>
+}
 
-  if (!home || !home.isActive) {
-    notFound();
+export default async function HomePage({ params }: HomePageProps) {
+  const { id } = await params
+  const db = getDb()
+
+  const result = await db
+    .select({
+      home: homes,
+      host: users,
+    })
+    .from(homes)
+    .leftJoin(users, eq(homes.hostId, users.id))
+    .where(eq(homes.id, id))
+    .limit(1)
+
+  if (!result[0]) {
+    notFound()
   }
 
+  const { home, host } = result[0]
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <HomeDetails home={home} />
-          </div>
-          <div>
-            <BookingCard 
-              home={home} 
-              availability={home.availability}
-              isAuthenticated={!!session}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    <>
+      <Header />
+      <main>
+        <HomeDetails home={home} host={host!} />
+      </main>
+      <Footer />
+    </>
+  )
 }

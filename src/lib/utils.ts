@@ -1,84 +1,100 @@
-import { twMerge } from 'tailwind-merge';
-import { format, formatDistanceToNow } from 'date-fns';
-
-// Define ClassValue type locally to avoid dependency on class-variance-authority
-type ClassValue = 
-  | string 
-  | number 
-  | boolean 
-  | undefined 
-  | null 
-  | { [key: string]: any }
-  | ClassValue[];
-
-// Native clsx implementation to avoid module resolution issues
-function clsx(...inputs: ClassValue[]): string {
-  const classes: string[] = [];
-  
-  for (const input of inputs) {
-    if (!input) continue;
-    
-    if (typeof input === 'string') {
-      classes.push(input);
-    } else if (Array.isArray(input)) {
-      const result = clsx(...input);
-      if (result) classes.push(result);
-    } else if (typeof input === 'object') {
-      for (const [key, value] of Object.entries(input)) {
-        if (value) classes.push(key);
-      }
-    }
-  }
-  
-  return classes.join(' ');
-}
+import { type ClassValue, clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  return twMerge(clsx(inputs))
 }
 
-export function formatDate(date: Date | string | number, formatString: string = 'PPP'): string {
-  return format(new Date(date), formatString);
-}
-
-export function formatRelativeDate(date: Date | string | number): string {
-  return formatDistanceToNow(new Date(date), { addSuffix: true });
-}
-
-export function formatCurrency(amount: number | string, currency: string = 'USD'): string {
-  const formatter = new Intl.NumberFormat('en-US', {
+export function formatPrice(amount: number, currency = 'USD') {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
-  });
-  return formatter.format(typeof amount === 'string' ? parseFloat(amount) : amount);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount)
 }
 
-export function generateId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`;
+export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOptions) {
+  const dateObj = typeof date === 'string' ? new Date(date) : date
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    ...options,
+  }).format(dateObj)
 }
 
-export function calculateNights(checkIn: Date, checkOut: Date): number {
-  const msPerDay = 24 * 60 * 60 * 1000;
-  return Math.round((checkOut.getTime() - checkIn.getTime()) / msPerDay);
+export function formatDateRange(startDate: Date | string, endDate: Date | string) {
+  const start = typeof startDate === 'string' ? new Date(startDate) : startDate
+  const end = typeof endDate === 'string' ? new Date(endDate) : endDate
+  
+  const startYear = start.getFullYear()
+  const endYear = end.getFullYear()
+  
+  if (startYear === endYear) {
+    const startMonth = start.toLocaleDateString('en-US', { month: 'short' })
+    const endMonth = end.toLocaleDateString('en-US', { month: 'short' })
+    
+    if (startMonth === endMonth) {
+      return `${startMonth} ${start.getDate()}-${end.getDate()}, ${startYear}`
+    }
+    
+    return `${startMonth} ${start.getDate()} - ${endMonth} ${end.getDate()}, ${startYear}`
+  }
+  
+  return `${formatDate(start)} - ${formatDate(end)}`
 }
 
-export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+export function calculateNights(checkIn: Date | string, checkOut: Date | string) {
+  const start = typeof checkIn === 'string' ? new Date(checkIn) : checkIn
+  const end = typeof checkOut === 'string' ? new Date(checkOut) : checkOut
+  
+  const diffTime = Math.abs(end.getTime() - start.getTime())
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  
+  return diffDays
 }
 
-export function truncate(str: string, length: number): string {
-  if (str.length <= length) return str;
-  return str.substring(0, length) + '...';
+export function isWithin24Hours(date: Date | string) {
+  const targetDate = typeof date === 'string' ? new Date(date) : date
+  const now = new Date()
+  const diffTime = targetDate.getTime() - now.getTime()
+  const diffHours = diffTime / (1000 * 60 * 60)
+  
+  return diffHours > 0 && diffHours <= 24
 }
 
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
+export function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+}
+
+export function slugify(text: string) {
+  return text
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '')
+}
+
+export function truncate(text: string, length: number) {
+  if (text.length <= length) return text
+  return text.slice(0, length).trim() + '...'
+}
+
+export async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  return 'An unknown error occurred'
 }

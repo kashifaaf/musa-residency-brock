@@ -1,102 +1,154 @@
-"use client";
+'use client'
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Search, Calendar, Users } from 'lucide-react';
-import { format } from 'date-fns';
+import { useState } from 'react'
+import { format } from 'date-fns'
+import { Calendar } from '@/components/ui/Calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Label } from '@/components/ui/Label'
+import { CalendarIcon, Search, Users } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-export function SearchForm() {
-  const router = useRouter();
-  const [location, setLocation] = useState('');
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
-  const [guests, setGuests] = useState('2');
+interface SearchFormProps {
+  onSearch: (params: {
+    location: string
+    checkIn: string
+    checkOut: string
+    guests: number
+  }) => void | Promise<void>
+  isLoading?: boolean
+  initialValues?: {
+    location?: string
+    checkIn?: string
+    checkOut?: string
+    guests?: number
+  }
+}
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const params = new URLSearchParams();
-    if (location) params.append('location', location);
-    if (checkIn) params.append('checkIn', checkIn);
-    if (checkOut) params.append('checkOut', checkOut);
-    if (guests) params.append('guests', guests);
-    
-    router.push(`/homes?${params.toString()}`);
-  };
+export function SearchForm({ onSearch, isLoading, initialValues }: SearchFormProps) {
+  const [location, setLocation] = useState(initialValues?.location || '')
+  const [checkIn, setCheckIn] = useState<Date | undefined>(
+    initialValues?.checkIn ? new Date(initialValues.checkIn) : undefined
+  )
+  const [checkOut, setCheckOut] = useState<Date | undefined>(
+    initialValues?.checkOut ? new Date(initialValues.checkOut) : undefined
+  )
+  const [guests, setGuests] = useState(initialValues?.guests || 2)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!location || !checkIn || !checkOut) return
+
+    onSearch({
+      location,
+      checkIn: format(checkIn, 'yyyy-MM-dd'),
+      checkOut: format(checkOut, 'yyyy-MM-dd'),
+      guests,
+    })
+  }
 
   return (
-    <form onSubmit={handleSearch} className="bg-white p-4 rounded-lg shadow-lg">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid md:grid-cols-4 gap-4">
-        <div className="md:col-span-1">
-          <Label htmlFor="location" className="sr-only">Location</Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              id="location"
-              type="text"
-              placeholder="Where to?"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+        <div className="md:col-span-2">
+          <Label htmlFor="location">Location</Label>
+          <Input
+            id="location"
+            type="text"
+            placeholder="City or country"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            required
+          />
         </div>
-        
+
         <div>
-          <Label htmlFor="checkIn" className="sr-only">Check in</Label>
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              id="checkIn"
-              type="date"
-              placeholder="Check in"
-              value={checkIn}
-              onChange={(e) => setCheckIn(e.target.value)}
-              className="pl-10"
-              min={format(new Date(), 'yyyy-MM-dd')}
-            />
-          </div>
+          <Label>Check in</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  'w-full justify-start text-left font-normal',
+                  !checkIn && 'text-gray-500'
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {checkIn ? format(checkIn, 'MMM d, yyyy') : 'Select date'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={checkIn}
+                onSelect={setCheckIn}
+                disabled={(date) =>
+                  date < new Date() || (checkOut ? date >= checkOut : false)
+                }
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
-        
+
         <div>
-          <Label htmlFor="checkOut" className="sr-only">Check out</Label>
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              id="checkOut"
-              type="date"
-              placeholder="Check out"
-              value={checkOut}
-              onChange={(e) => setCheckOut(e.target.value)}
-              className="pl-10"
-              min={checkIn || format(new Date(), 'yyyy-MM-dd')}
-            />
-          </div>
+          <Label>Check out</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  'w-full justify-start text-left font-normal',
+                  !checkOut && 'text-gray-500'
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {checkOut ? format(checkOut, 'MMM d, yyyy') : 'Select date'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={checkOut}
+                onSelect={setCheckOut}
+                disabled={(date) =>
+                  date < new Date() || (checkIn ? date <= checkIn : false)
+                }
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
-        
-        <div>
-          <Label htmlFor="guests" className="sr-only">Guests</Label>
-          <div className="relative">
-            <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <Label htmlFor="guests">Guests</Label>
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-gray-500" />
             <Input
               id="guests"
               type="number"
-              placeholder="Guests"
-              value={guests}
-              onChange={(e) => setGuests(e.target.value)}
-              className="pl-10"
               min="1"
               max="10"
+              value={guests}
+              onChange={(e) => setGuests(parseInt(e.target.value) || 1)}
+              className="w-20"
             />
           </div>
         </div>
+
+        <Button
+          type="submit"
+          size="lg"
+          disabled={isLoading || !location || !checkIn || !checkOut}
+          className="px-8"
+        >
+          <Search className="mr-2 h-4 w-4" />
+          {isLoading ? 'Searching...' : 'Search'}
+        </Button>
       </div>
-      
-      <Button type="submit" className="w-full mt-4" size="lg">
-        Search
-      </Button>
     </form>
-  );
+  )
 }
