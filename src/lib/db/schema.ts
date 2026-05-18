@@ -1,265 +1,288 @@
-import { pgTable, text, timestamp, boolean, integer, decimal, uuid, json, index, uniqueIndex } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
-import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
-import { z } from 'zod'
+import {
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+  integer,
+  boolean,
+  date,
+  decimal,
+  primaryKey,
+  index,
+} from "drizzle-orm/pg-core"
+import { relations } from "drizzle-orm"
 
-// Users table
-export const users = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  email: text('email').notNull().unique(),
-  name: text('name'),
-  image: text('image'),
-  bio: text('bio'),
-  workInfo: text('work_info'),
-  location: text('location'),
-  socialMediaUrls: json('social_media_urls').$type<{
-    website?: string
-    instagram?: string
-    linkedin?: string
-    twitter?: string
-  }>(),
-  artisticPractice: text('artistic_practice'),
-  portfolio: json('portfolio').$type<string[]>(),
-  isHost: boolean('is_host').default(false).notNull(),
-  emailVerified: timestamp('emailVerified'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  emailIdx: uniqueIndex('users_email_idx').on(table.email),
-}))
+// ─── NextAuth Required Tables ─────────────────────────────────────────────────
+
+export const users = pgTable("users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 255 }),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  emailVerified: timestamp("email_verified", { mode: "date" }),
+  image: text("image"),
+  // Extended profile fields
+  bio: text("bio"),
+  location: varchar("location", { length: 255 }),
+  occupation: varchar("occupation", { length: 255 }),
+  socialLinks: text("social_links"), // JSON string of social media links
+  phone: varchar("phone", { length: 50 }),
+  isHost: boolean("is_host").default(false),
+  responseRate: decimal("response_rate", { precision: 5, scale: 2 }).default("100.00"),
+  responsePenalty: integer("response_penalty").default(0),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+})
+
+export const accounts = pgTable(
+  "accounts",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 255 }).notNull(),
+    provider: varchar("provider", { length: 255 }).notNull(),
+    providerAccountId: varchar("provider_account_id", { length: 255 }).notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: varchar("token_type", { length: 255 }),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (account) => [
+    primaryKey({ columns: [account.provider, account.providerAccountId] }),
+  ]
+)
+
+export const sessions = pgTable("sessions", {
+  sessionToken: varchar("session_token", { length: 255 }).notNull().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires", { mode: "date" }).notNull(),
+})
+
+export const verificationTokens = pgTable(
+  "verification_tokens",
+  {
+    identifier: varchar("identifier", { length: 255 }).notNull(),
+    token: varchar("token", { length: 255 }).notNull(),
+    expires: timestamp("expires", { mode: "date" }).notNull(),
+  },
+  (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })]
+)
+
+// ─── Home Listings ────────────────────────────────────────────────────────────
+
+export const listings = pgTable(
+  "listings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    hostId: uuid("host_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    address: text("address"),
+    city: varchar("city", { length: 255 }).notNull(),
+    state: varchar("state", { length: 255 }),
+    country: varchar("country", { length: 255 }).notNull(),
+    postalCode: varchar("postal_code", { length: 20 }),
+    latitude: decimal("latitude", { precision: 10, scale: 7 }),
+    longitude: decimal("longitude", { precision: 10, scale: 7 }),
+    propertyType: varchar("property_type", { length: 100 }), // apartment, house, studio, etc.
+    bedrooms: integer("bedrooms").default(1),
+    bathrooms: integer("bathrooms").default(1),
+    maxGuests: integer("max_guests").default(2),
+    amenities: text("amenities"), // JSON string array
+    creativeAmenities: text("creative_amenities"), // JSON string: studio space, instruments, easels, etc.
+    houseRules: text("house_rules"),
+    pricePerNight: decimal("price_per_night", { precision: 10, scale: 2 }).notNull(),
+    currency: varchar("currency", { length: 3 }).default("USD"),
+    minimumStay: integer("minimum_stay").default(1),
+    maximumStay: integer("maximum_stay").default(365),
+    isPublished: boolean("is_published").default(false),
+    isVerified: boolean("is_verified").default(false),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (listing) => [
+    index("listings_host_id_idx").on(listing.hostId),
+    index("listings_city_idx").on(listing.city),
+    index("listings_country_idx").on(listing.country),
+    index("listings_published_idx").on(listing.isPublished),
+  ]
+)
+
+// ─── Listing Photos ───────────────────────────────────────────────────────────
+
+export const listingPhotos = pgTable(
+  "listing_photos",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    caption: varchar("caption", { length: 255 }),
+    sortOrder: integer("sort_order").default(0),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (photo) => [index("photos_listing_id_idx").on(photo.listingId)]
+)
+
+// ─── Availability ─────────────────────────────────────────────────────────────
+
+export const availability = pgTable(
+  "availability",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    startDate: date("start_date", { mode: "date" }).notNull(),
+    endDate: date("end_date", { mode: "date" }).notNull(),
+    isAvailable: boolean("is_available").default(true),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (avail) => [
+    index("availability_listing_id_idx").on(avail.listingId),
+    index("availability_dates_idx").on(avail.startDate, avail.endDate),
+  ]
+)
+
+// ─── Bookings ─────────────────────────────────────────────────────────────────
+
+export const bookings = pgTable(
+  "bookings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    guestId: uuid("guest_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    hostId: uuid("host_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    checkIn: date("check_in", { mode: "date" }).notNull(),
+    checkOut: date("check_out", { mode: "date" }).notNull(),
+    totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+    currency: varchar("currency", { length: 3 }).default("USD"),
+    status: varchar("status", { length: 50 }).default("pending").notNull(),
+    // pending -> approved -> paid -> active -> completed
+    // pending -> declined
+    // pending -> expired (auto-decline after 24h)
+    // approved -> cancelled
+    guestMessage: text("guest_message"),
+    hostMessage: text("host_message"),
+    stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+    stripePaymentStatus: varchar("stripe_payment_status", { length: 50 }),
+    respondedAt: timestamp("responded_at", { mode: "date" }),
+    paidAt: timestamp("paid_at", { mode: "date" }),
+    expiresAt: timestamp("expires_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (booking) => [
+    index("bookings_listing_id_idx").on(booking.listingId),
+    index("bookings_guest_id_idx").on(booking.guestId),
+    index("bookings_host_id_idx").on(booking.hostId),
+    index("bookings_status_idx").on(booking.status),
+    index("bookings_expires_at_idx").on(booking.expiresAt),
+  ]
+)
+
+// ─── Messages ─────────────────────────────────────────────────────────────────
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    bookingId: uuid("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    senderId: uuid("sender_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    isRead: boolean("is_read").default(false),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (message) => [
+    index("messages_booking_id_idx").on(message.bookingId),
+    index("messages_sender_id_idx").on(message.senderId),
+  ]
+)
+
+// ─── Relations ────────────────────────────────────────────────────────────────
 
 export const usersRelations = relations(users, ({ many }) => ({
-  homes: many(homes),
-  bookingsAsGuest: many(bookings),
-  sentMessages: many(messages, {
-    relationName: 'sender',
-  }),
-  receivedMessages: many(messages, {
-    relationName: 'recipient',
-  }),
   accounts: many(accounts),
   sessions: many(sessions),
-}))
-
-// Accounts table (for NextAuth)
-export const accounts = pgTable('accounts', {
-  userId: uuid('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  type: text('type').notNull(),
-  provider: text('provider').notNull(),
-  providerAccountId: text('providerAccountId').notNull(),
-  refresh_token: text('refresh_token'),
-  access_token: text('access_token'),
-  expires_at: integer('expires_at'),
-  token_type: text('token_type'),
-  scope: text('scope'),
-  id_token: text('id_token'),
-  session_state: text('session_state'),
-}, (table) => ({
-  providerProviderAccountIdIdx: uniqueIndex('accounts_provider_providerAccountId_idx')
-    .on(table.provider, table.providerAccountId),
-  userIdIdx: index('accounts_userId_idx').on(table.userId),
+  listings: many(listings),
+  bookingsAsGuest: many(bookings, { relationName: "guestBookings" }),
+  bookingsAsHost: many(bookings, { relationName: "hostBookings" }),
+  messages: many(messages),
 }))
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
-  user: one(users, {
-    fields: [accounts.userId],
-    references: [users.id],
-  }),
-}))
-
-// Sessions table (for NextAuth)
-export const sessions = pgTable('sessions', {
-  sessionToken: text('sessionToken').notNull().unique(),
-  userId: uuid('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  expires: timestamp('expires').notNull(),
-}, (table) => ({
-  sessionTokenIdx: uniqueIndex('sessions_sessionToken_idx').on(table.sessionToken),
-  userIdIdx: index('sessions_userId_idx').on(table.userId),
+  user: one(users, { fields: [accounts.userId], references: [users.id] }),
 }))
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
-  user: one(users, {
-    fields: [sessions.userId],
-    references: [users.id],
-  }),
+  user: one(users, { fields: [sessions.userId], references: [users.id] }),
 }))
 
-// Verification tokens table (for email verification)
-export const verificationTokens = pgTable('verification_tokens', {
-  identifier: text('identifier').notNull(),
-  token: text('token').notNull().unique(),
-  expires: timestamp('expires').notNull(),
-}, (table) => ({
-  tokenIdx: uniqueIndex('verification_tokens_token_idx').on(table.token),
-  identifierTokenIdx: index('verification_tokens_identifier_token_idx').on(table.identifier, table.token),
-}))
-
-// Homes table
-export const homes = pgTable('homes', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  hostId: uuid('host_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(),
-  description: text('description').notNull(),
-  address: text('address').notNull(),
-  city: text('city').notNull(),
-  country: text('country').notNull(),
-  latitude: decimal('latitude', { precision: 10, scale: 8 }),
-  longitude: decimal('longitude', { precision: 11, scale: 8 }),
-  images: json('images').notNull().$type<string[]>(),
-  amenities: json('amenities').$type<string[]>(),
-  creativeAmenities: json('creative_amenities').$type<string[]>(),
-  maxGuests: integer('max_guests').notNull().default(2),
-  bedrooms: integer('bedrooms').notNull().default(1),
-  bathrooms: integer('bathrooms').notNull().default(1),
-  pricePerNight: decimal('price_per_night', { precision: 10, scale: 2 }).notNull(),
-  minimumStay: integer('minimum_stay').notNull().default(30),
-  houseRules: text('house_rules'),
-  localArtScene: text('local_art_scene'),
-  isActive: boolean('is_active').default(true).notNull(),
-  responseRate: decimal('response_rate', { precision: 5, scale: 2 }).default('100.00'),
-  avgResponseTime: integer('avg_response_time'), // in hours
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  hostIdIdx: index('homes_host_id_idx').on(table.hostId),
-  cityCountryIdx: index('homes_city_country_idx').on(table.city, table.country),
-  isActiveIdx: index('homes_is_active_idx').on(table.isActive),
-}))
-
-export const homesRelations = relations(homes, ({ one, many }) => ({
-  host: one(users, {
-    fields: [homes.hostId],
-    references: [users.id],
-  }),
+export const listingsRelations = relations(listings, ({ one, many }) => ({
+  host: one(users, { fields: [listings.hostId], references: [users.id] }),
+  photos: many(listingPhotos),
   availability: many(availability),
   bookings: many(bookings),
 }))
 
-// Availability table
-export const availability = pgTable('availability', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  homeId: uuid('home_id').notNull().references(() => homes.id, { onDelete: 'cascade' }),
-  startDate: timestamp('start_date').notNull(),
-  endDate: timestamp('end_date').notNull(),
-  isAvailable: boolean('is_available').default(true).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  homeIdIdx: index('availability_home_id_idx').on(table.homeId),
-  dateRangeIdx: index('availability_date_range_idx').on(table.startDate, table.endDate),
-}))
-
-export const availabilityRelations = relations(availability, ({ one }) => ({
-  home: one(homes, {
-    fields: [availability.homeId],
-    references: [homes.id],
+export const listingPhotosRelations = relations(listingPhotos, ({ one }) => ({
+  listing: one(listings, {
+    fields: [listingPhotos.listingId],
+    references: [listings.id],
   }),
 }))
 
-// Bookings table
-export const bookings = pgTable('bookings', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  homeId: uuid('home_id').notNull().references(() => homes.id, { onDelete: 'restrict' }),
-  guestId: uuid('guest_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
-  checkIn: timestamp('check_in').notNull(),
-  checkOut: timestamp('check_out').notNull(),
-  guests: integer('guests').notNull().default(1),
-  totalPrice: decimal('total_price', { precision: 10, scale: 2 }).notNull(),
-  status: text('status', { 
-    enum: ['pending', 'approved', 'declined', 'cancelled', 'completed'] 
-  }).notNull().default('pending'),
-  message: text('message'),
-  hostResponseAt: timestamp('host_response_at'),
-  paymentIntentId: text('payment_intent_id'),
-  paymentStatus: text('payment_status', {
-    enum: ['pending', 'authorized', 'captured', 'failed', 'refunded']
-  }).default('pending'),
-  cancelledAt: timestamp('cancelled_at'),
-  cancelReason: text('cancel_reason'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  homeIdIdx: index('bookings_home_id_idx').on(table.homeId),
-  guestIdIdx: index('bookings_guest_id_idx').on(table.guestId),
-  statusIdx: index('bookings_status_idx').on(table.status),
-  dateRangeIdx: index('bookings_date_range_idx').on(table.checkIn, table.checkOut),
+export const availabilityRelations = relations(availability, ({ one }) => ({
+  listing: one(listings, {
+    fields: [availability.listingId],
+    references: [listings.id],
+  }),
 }))
 
-export const bookingsRelations = relations(bookings, ({ one }) => ({
-  home: one(homes, {
-    fields: [bookings.homeId],
-    references: [homes.id],
+export const bookingsRelations = relations(bookings, ({ one, many }) => ({
+  listing: one(listings, {
+    fields: [bookings.listingId],
+    references: [listings.id],
   }),
   guest: one(users, {
     fields: [bookings.guestId],
     references: [users.id],
+    relationName: "guestBookings",
   }),
-}))
-
-// Messages table
-export const messages = pgTable('messages', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  senderId: uuid('sender_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  recipientId: uuid('recipient_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  bookingId: uuid('booking_id').references(() => bookings.id, { onDelete: 'cascade' }),
-  content: text('content').notNull(),
-  isRead: boolean('is_read').default(false).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (table) => ({
-  senderIdIdx: index('messages_sender_id_idx').on(table.senderId),
-  recipientIdIdx: index('messages_recipient_id_idx').on(table.recipientId),
-  bookingIdIdx: index('messages_booking_id_idx').on(table.bookingId),
+  host: one(users, {
+    fields: [bookings.hostId],
+    references: [users.id],
+    relationName: "hostBookings",
+  }),
+  messages: many(messages),
 }))
 
 export const messagesRelations = relations(messages, ({ one }) => ({
-  sender: one(users, {
-    fields: [messages.senderId],
-    references: [users.id],
-    relationName: 'sender',
-  }),
-  recipient: one(users, {
-    fields: [messages.recipientId],
-    references: [users.id],
-    relationName: 'recipient',
-  }),
   booking: one(bookings, {
     fields: [messages.bookingId],
     references: [bookings.id],
   }),
+  sender: one(users, {
+    fields: [messages.senderId],
+    references: [users.id],
+  }),
 }))
-
-// Zod schemas for validation
-export const insertUserSchema = createInsertSchema(users)
-export const selectUserSchema = createSelectSchema(users)
-
-export const insertHomeSchema = createInsertSchema(homes, {
-  images: z.array(z.string().url()),
-  amenities: z.array(z.string()).optional(),
-  creativeAmenities: z.array(z.string()).optional(),
-  pricePerNight: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0),
-})
-export const selectHomeSchema = createSelectSchema(homes)
-
-export const insertBookingSchema = createInsertSchema(bookings)
-export const selectBookingSchema = createSelectSchema(bookings)
-
-export const insertMessageSchema = createInsertSchema(messages)
-export const selectMessageSchema = createSelectSchema(messages)
-
-export const insertAvailabilitySchema = createInsertSchema(availability)
-export const selectAvailabilitySchema = createSelectSchema(availability)
-
-// Export all table types
-export type User = typeof users.$inferSelect
-export type NewUser = typeof users.$inferInsert
-export type Account = typeof accounts.$inferSelect
-export type Session = typeof sessions.$inferSelect
-export type VerificationToken = typeof verificationTokens.$inferSelect
-export type Home = typeof homes.$inferSelect
-export type NewHome = typeof homes.$inferInsert
-export type Booking = typeof bookings.$inferSelect
-export type NewBooking = typeof bookings.$inferInsert
-export type Message = typeof messages.$inferSelect
-export type NewMessage = typeof messages.$inferInsert
-export type Availability = typeof availability.$inferSelect
-export type NewAvailability = typeof availability.$inferInsert

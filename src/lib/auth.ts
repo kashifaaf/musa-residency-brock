@@ -1,64 +1,51 @@
-import type { NextAuthOptions, DefaultSession } from "next-auth"
-import GoogleProvider from "next-auth/providers/google"
+import type { NextAuthOptions } from "next-auth"
 import { DrizzleAdapter } from "@auth/drizzle-adapter"
+import GoogleProvider from "next-auth/providers/google"
 import { getDb } from "@/lib/db"
-import { users } from "@/lib/db/schema"
-import { eq } from "drizzle-orm"
-import { getServerSession } from "next-auth"
 
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string
-      isHost: boolean
-    } & DefaultSession["user"]
-  }
-
-  interface User {
-    isHost?: boolean
-  }
-}
-
-export const authOptions: NextAuthOptions = {
-  adapter: DrizzleAdapter(getDb()) as any,
-  providers: [
-    GoogleProvider({
-      clientId: process.env.AUTH_GOOGLE_ID!,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
-    }),
-  ],
-  callbacks: {
-    async session({ session, token }) {
-      if (token?.sub && session.user) {
-        const db = getDb()
-        const user = await db.query.users.findFirst({
-          where: eq(users.id, token.sub),
-        })
-
-        if (user) {
-          session.user.id = user.id
-          session.user.isHost = user.isHost
+function createAuthOptions(): NextAuthOptions {
+  return {
+    adapter: DrizzleAdapter(getDb()) as any,
+    providers: [
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      }),
+    ],
+    session: { strategy: "jwt" },
+    callbacks: {
+      async session({ session, token }) {
+        if (session.user && token.sub) {
+          session.user.id = token.sub
         }
-      }
-
-      return session
+        return session
+      },
+      async jwt({ token, user }) {
+        if (user) {
+          token.sub = user.id
+        }
+        return token
+      },
     },
-    async jwt({ token, user }) {
-      if (user) {
-        token.isHost = (user as any).isHost
-      }
-      return token
+    pages: {
+      signIn: "/login",
     },
-  },
-  pages: {
-    signIn: "/auth/signin",
-    error: "/auth/error",
-  },
-  session: {
-    strategy: "jwt",
-  },
+  }
 }
 
-export async function auth() {
-  return getServerSession(authOptions)
+let _authOptions: NextAuthOptions | null = null
+
+export function getAuthOptions(): NextAuthOptions {
+  if (!_authOptions) {
+    _authOptions = createAuthOptions()
+  }
+  return _authOptions
 }
+
+// For backward compat — but this is a lazy proxy
+export const authOptions: NextAuthOptions = new Proxy({} as NextAuthOptions, {
+  get(_target, prop) {
+    const opts = getAuthOptions()
+    return (opts as any)[prop]
+  },
+})

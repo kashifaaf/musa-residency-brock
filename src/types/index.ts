@@ -1,79 +1,110 @@
-export type BookingStatus = 'pending' | 'approved' | 'declined' | 'cancelled' | 'completed'
-export type PaymentStatus = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded'
+import type { InferSelectModel, InferInsertModel } from "drizzle-orm"
+import type {
+  users,
+  listings,
+  listingPhotos,
+  availability,
+  bookings,
+  messages,
+} from "@/lib/db/schema"
+import type { BOOKING_STATUS, PROPERTY_TYPES } from "@/lib/constants"
 
-export interface SearchParams {
-  location?: string
-  checkIn?: string
-  checkOut?: string
+// ─── Database Model Types ─────────────────────────────────────────────────────
+
+export type User = InferSelectModel<typeof users>
+export type NewUser = InferInsertModel<typeof users>
+
+export type Listing = InferSelectModel<typeof listings>
+export type NewListing = InferInsertModel<typeof listings>
+
+export type ListingPhoto = InferSelectModel<typeof listingPhotos>
+export type NewListingPhoto = InferInsertModel<typeof listingPhotos>
+
+export type Availability = InferSelectModel<typeof availability>
+export type NewAvailability = InferInsertModel<typeof availability>
+
+export type Booking = InferSelectModel<typeof bookings>
+export type NewBooking = InferInsertModel<typeof bookings>
+
+export type Message = InferSelectModel<typeof messages>
+export type NewMessage = InferInsertModel<typeof messages>
+
+// ─── Enum Types ───────────────────────────────────────────────────────────────
+
+export type BookingStatus =
+  (typeof BOOKING_STATUS)[keyof typeof BOOKING_STATUS]
+
+export type PropertyType = (typeof PROPERTY_TYPES)[number]
+
+// ─── Extended / Joined Types ──────────────────────────────────────────────────
+
+export type ListingWithPhotos = Listing & {
+  photos: ListingPhoto[]
+}
+
+export type ListingWithHost = Listing & {
+  host: Pick<User, "id" | "name" | "image" | "bio" | "location">
+  photos: ListingPhoto[]
+}
+
+export type BookingWithDetails = Booking & {
+  listing: ListingWithPhotos
+  guest: Pick<User, "id" | "name" | "image" | "bio" | "location" | "occupation">
+  host: Pick<User, "id" | "name" | "image">
+}
+
+export type MessageWithSender = Message & {
+  sender: Pick<User, "id" | "name" | "image">
+}
+
+// ─── Search / Filter Types ────────────────────────────────────────────────────
+
+export type SearchFilters = {
+  city?: string
+  country?: string
+  checkIn?: Date
+  checkOut?: Date
   guests?: number
-  page?: number
-  limit?: number
-}
-
-export interface BookingRequest {
-  homeId: string
-  checkIn: string
-  checkOut: string
-  guests: number
-  message?: string
-}
-
-export interface HomeFilters {
   minPrice?: number
   maxPrice?: number
-  bedrooms?: number
-  bathrooms?: number
-  amenities?: string[]
-  creativeAmenities?: string[]
+  propertyType?: PropertyType
 }
 
-export interface PaginationParams {
-  page: number
-  limit: number
-  total: number
-  totalPages: number
+export type SearchResult = ListingWithHost & {
+  availableDates: Availability[]
 }
 
-export interface ApiResponse<T> {
+// ─── Auth Types ───────────────────────────────────────────────────────────────
+
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string
+      name?: string | null
+      email?: string | null
+      image?: string | null
+    }
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    sub: string
+  }
+}
+
+// ─── API Response Types ───────────────────────────────────────────────────────
+
+export type ApiResponse<T = unknown> = {
+  success: boolean
   data?: T
   error?: string
-  message?: string
 }
 
-export interface SessionUser {
-  id: string
-  email: string
-  name: string
-  image?: string
-  isHost: boolean
-}
-
-export interface UploadedFile {
-  url: string
-  key: string
-  name: string
-  size: number
-}
-
-export interface Coordinates {
-  latitude: number
-  longitude: number
-}
-
-export interface DateRange {
-  from: Date
-  to: Date
-}
-
-export interface NotificationPreferences {
-  email: {
-    bookingRequests: boolean
-    bookingUpdates: boolean
-    messages: boolean
-    marketing: boolean
-  }
-  sms?: {
-    bookingRequests: boolean
-    bookingUpdates: boolean
-  }
-}
+export type PaginatedResponse<T> = ApiResponse<{
+  items: T[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}>
