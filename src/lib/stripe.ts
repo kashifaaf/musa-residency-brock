@@ -4,13 +4,11 @@ let _stripe: Stripe | null = null
 
 export function getStripe(): Stripe {
   if (!_stripe) {
-    const secretKey = process.env.STRIPE_SECRET_KEY
-    if (!secretKey) {
+    const key = process.env.STRIPE_SECRET_KEY
+    if (!key) {
       throw new Error("STRIPE_SECRET_KEY environment variable is not set")
     }
-    _stripe = new Stripe(secretKey, {
-      apiVersion: "2024-12-18.acacia" as any,
-    })
+    _stripe = new Stripe(key, { apiVersion: "2024-12-18.acacia" as Stripe.LatestApiVersion })
   }
   return _stripe
 }

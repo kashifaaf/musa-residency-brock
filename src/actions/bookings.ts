@@ -1,79 +1,212 @@
 "use server"
 
 import { getServerSession } from "next-auth"
-import { getAuthOptions } from "@/lib/auth"
+import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { bookings, listings, users } from "@/lib/db/schema"
+import { bookings, payments, listings, users } from "@/lib/db/schema"
 import { eq, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
-import { BOOKING_STATUS, BOOKING_EXPIRATION_HOURS } from "@/lib/constants"
-import { getExpirationDate } from "@/lib/utils"
-import { sendBookingStatusEmail } from "@/lib/email"
+import { calculateTotalPrice, getResponseDeadline } from "@/lib/utils"
+import { HOST_RESPONSE_WINDOW_HOURS } from "@/lib/constants"
+import { getStripe } from "@/lib/stripe"
+import { sendBookingRequestEmail, sendBookingStatusEmail } from "@/lib/email"
 
 type ActionResult<T> = { success: true; data: T } | { success: false; error: string }
+
+export async function createBookingRequest(input: {
+  listingId: string
+  checkIn: string
+  checkOut: string
+  guestMessage?: string
+}): Promise<ActionResult<{ bookingId: string; clientSecret: string }>> {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return { success: false, error: "You must be signed in" }
+    }
+
+    const listing = await db.query.listings.findFirst({
+      where: and(eq(listings.id, input.listingId), eq(listings.isPublished, true)),
+      with: { host: true },
+    })
+
+    if (!listing) {
+      return { success: false, error: "Listing not found" }
+    }
+
+    if (listing.hostId === session.user.id) {
+      return { success: false, error: "You cannot book your own listing" }
+    }
+
+    const checkIn = new Date(input.checkIn)
+    const checkOut = new Date(input.checkOut)
+
+    if (checkIn >= checkOut) {
+      return { success: false, error: "Check-in must be before check-out" }
+    }
+
+    const diffDays = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))
+    if (diffDays < listing.minStayNights) {
+      return { success: false, error: `Minimum stay is ${listing.minStayNights} nights` }
+    }
+
+    const totalPrice = calculateTotalPrice(listing.pricePerNight, checkIn, checkOut)
+    const respondBy = getResponseDeadline(new Date(), HOST_RESPONSE_WINDOW_HOURS)
+
+    const stripe = getStripe()
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: totalPrice * 100,
+      currency: "usd",
+      capture_method: "manual",
+      metadata: {
+        listingId: listing.id,
+        guestId: session.user.id,
+        hostId: listing.hostId,
+      },
+    })
+
+    const [booking] = await db
+      .insert(bookings)
+      .values({
+        listingId: listing.id,
+        guestId: session.user.id,
+        hostId: listing.hostId,
+        checkIn,
+        checkOut,
+        totalPrice,
+        status: "pending",
+        guestMessage: input.guestMessage || null,
+        respondBy,
+      })
+      .returning({ id: bookings.id })
+
+    await db.insert(payments).values({
+      bookingId: booking.id,
+      stripePaymentIntentId: paymentIntent.id,
+      amount: totalPrice * 100,
+      currency: "usd",
+      status: "authorized",
+    })
+
+    try {
+      const guest = await db.query.users.findFirst({ where: eq(users.id, session.user.id) })
+      if (listing.host?.email && guest?.name) {
+        await sendBookingRequestEmail(
+          listing.host.email,
+          listing.host.name || "Host",
+          guest.name,
+          listing.title,
+          checkIn.toLocaleDateString(),
+          checkOut.toLocaleDateString(),
+          booking.id
+        )
+      }
+    } catch (emailErr) {
+      console.error("Failed to send booking request email:", emailErr)
+    }
+
+    revalidatePath("/bookings")
+    revalidatePath("/dashboard")
+
+    return {
+      success: true,
+      data: { bookingId: booking.id, clientSecret: paymentIntent.client_secret! },
+    }
+  } catch (error) {
+    console.error("createBookingRequest error:", error)
+    return { success: false, error: "Failed to create booking request" }
+  }
+}
 
 export async function respondToBooking(
   bookingId: string,
   action: "approve" | "decline",
-  hostMessage?: string
+  note?: string
 ): Promise<ActionResult<null>> {
   try {
-    const session = await getServerSession(getAuthOptions())
+    const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
-      return { success: false, error: "You must be logged in" }
+      return { success: false, error: "You must be signed in" }
     }
 
     const booking = await db.query.bookings.findFirst({
       where: and(eq(bookings.id, bookingId), eq(bookings.hostId, session.user.id)),
-      with: {
-        listing: true,
-        guest: true,
-      },
+      with: { payment: true, guest: true, listing: true },
     })
 
     if (!booking) {
-      return { success: false, error: "Booking not found" }
+      return { success: false, error: "Booking not found or unauthorized" }
     }
 
-    if (booking.status !== BOOKING_STATUS.PENDING) {
-      return { success: false, error: `Cannot respond to a booking with status: ${booking.status}` }
+    if (booking.status !== "pending") {
+      return { success: false, error: "This booking has already been responded to" }
     }
 
-    const now = new Date()
-    if (booking.expiresAt && now > booking.expiresAt) {
+    if (new Date() > booking.respondBy) {
       await db
         .update(bookings)
-        .set({ status: BOOKING_STATUS.EXPIRED, updatedAt: now })
+        .set({ status: "expired", updatedAt: new Date() })
         .where(eq(bookings.id, bookingId))
-      return { success: false, error: "This booking request has expired" }
+      return { success: false, error: "Response window has expired" }
     }
 
-    const newStatus = action === "approve" ? BOOKING_STATUS.APPROVED : BOOKING_STATUS.DECLINED
+    const stripe = getStripe()
 
-    await db
-      .update(bookings)
-      .set({
-        status: newStatus,
-        hostMessage: hostMessage || null,
-        respondedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(bookings.id, bookingId))
+    if (action === "approve") {
+      if (booking.payment?.stripePaymentIntentId) {
+        await stripe.paymentIntents.capture(booking.payment.stripePaymentIntentId)
+        await db
+          .update(payments)
+          .set({ status: "captured", updatedAt: new Date() })
+          .where(eq(payments.bookingId, bookingId))
+      }
 
-    if (booking.guest?.email) {
-      await sendBookingStatusEmail(
-        booking.guest.email,
-        booking.guest.name || "Guest",
-        booking.listing?.title || "Listing",
-        newStatus,
-        bookingId
-      )
+      await db
+        .update(bookings)
+        .set({
+          status: "approved",
+          hostResponseNote: note || null,
+          respondedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, bookingId))
+    } else {
+      if (booking.payment?.stripePaymentIntentId) {
+        await stripe.paymentIntents.cancel(booking.payment.stripePaymentIntentId)
+        await db
+          .update(payments)
+          .set({ status: "refunded", updatedAt: new Date() })
+          .where(eq(payments.bookingId, bookingId))
+      }
+
+      await db
+        .update(bookings)
+        .set({
+          status: "declined",
+          hostResponseNote: note || null,
+          respondedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, bookingId))
+    }
+
+    try {
+      if (booking.guest?.email) {
+        await sendBookingStatusEmail(
+          booking.guest.email,
+          booking.guest.name || "Guest",
+          booking.listing?.title || "Listing",
+          action === "approve" ? "approved" : "declined",
+          bookingId
+        )
+      }
+    } catch (emailErr) {
+      console.error("Failed to send booking status email:", emailErr)
     }
 
     revalidatePath(`/bookings/${bookingId}`)
     revalidatePath("/bookings")
     revalidatePath("/dashboard")
-
     return { success: true, data: null }
   } catch (error) {
     console.error("respondToBooking error:", error)
@@ -83,44 +216,53 @@ export async function respondToBooking(
 
 export async function cancelBooking(bookingId: string): Promise<ActionResult<null>> {
   try {
-    const session = await getServerSession(getAuthOptions())
+    const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
-      return { success: false, error: "You must be logged in" }
+      return { success: false, error: "You must be signed in" }
     }
 
     const booking = await db.query.bookings.findFirst({
       where: eq(bookings.id, bookingId),
-      with: { listing: true, guest: true, host: true },
+      with: { payment: true },
     })
 
     if (!booking) {
       return { success: false, error: "Booking not found" }
     }
 
-    const isGuest = booking.guestId === session.user.id
-    const isHost = booking.hostId === session.user.id
-
-    if (!isGuest && !isHost) {
-      return { success: false, error: "You don't have permission to cancel this booking" }
+    if (booking.guestId !== session.user.id && booking.hostId !== session.user.id) {
+      return { success: false, error: "Unauthorized" }
     }
 
-    const cancellableStatuses = [
-      BOOKING_STATUS.PENDING,
-      BOOKING_STATUS.APPROVED,
-    ]
-    if (!cancellableStatuses.includes(booking.status as any)) {
-      return { success: false, error: `Cannot cancel a booking with status: ${booking.status}` }
+    if (booking.status !== "pending" && booking.status !== "approved") {
+      return { success: false, error: "This booking cannot be cancelled" }
+    }
+
+    const stripe = getStripe()
+    if (booking.payment?.stripePaymentIntentId) {
+      try {
+        if (booking.status === "approved") {
+          await stripe.refunds.create({ payment_intent: booking.payment.stripePaymentIntentId })
+        } else {
+          await stripe.paymentIntents.cancel(booking.payment.stripePaymentIntentId)
+        }
+        await db
+          .update(payments)
+          .set({ status: "refunded", updatedAt: new Date() })
+          .where(eq(payments.bookingId, bookingId))
+      } catch (stripeErr) {
+        console.error("Stripe cancellation error:", stripeErr)
+      }
     }
 
     await db
       .update(bookings)
-      .set({ status: BOOKING_STATUS.CANCELLED, updatedAt: new Date() })
+      .set({ status: "cancelled", updatedAt: new Date() })
       .where(eq(bookings.id, bookingId))
 
     revalidatePath(`/bookings/${bookingId}`)
     revalidatePath("/bookings")
     revalidatePath("/dashboard")
-
     return { success: true, data: null }
   } catch (error) {
     console.error("cancelBooking error:", error)

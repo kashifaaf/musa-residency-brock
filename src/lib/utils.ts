@@ -5,40 +5,45 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(
-  amount: number,
-  currency: string = "USD"
-): string {
+export function formatCurrency(amountInCents: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
+  }).format(amountInCents / 100)
 }
 
-export function formatDate(date: Date | string): string {
+export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
   const d = typeof date === "string" ? new Date(date) : date
-  return new Intl.DateTimeFormat("en-US", {
+  return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
-  }).format(d)
+    ...options,
+  })
 }
 
-export function calculateNights(checkIn: Date, checkOut: Date): number {
-  const diffTime = checkOut.getTime() - checkIn.getTime()
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+export function getResponseDeadline(createdAt: Date, hours = 24): Date {
+  return new Date(createdAt.getTime() + hours * 60 * 60 * 1000)
 }
 
-export function getExpirationDate(hoursFromNow: number = 24): Date {
-  return new Date(Date.now() + hoursFromNow * 60 * 60 * 1000)
+export function isBookingExpired(respondBy: Date): boolean {
+  return new Date() > respondBy
+}
+
+export function calculateTotalPrice(
+  pricePerNight: number,
+  checkIn: Date,
+  checkOut: Date
+): number {
+  const diffTime = Math.abs(checkOut.getTime() - checkIn.getTime())
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return pricePerNight * diffDays
 }
 
 export function slugify(text: string): string {
   return text
     .toLowerCase()
     .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
+    .replace(/[\s_]+/g, "-")
     .replace(/^-+|-+$/g, "")
 }

@@ -17,15 +17,16 @@ export function getDb(): NeonHttpDatabase<typeof schema> {
   return _db
 }
 
-// Re-export for convenience — but this is a getter, not a static instance.
-// Use getDb() in places that need the actual instance at call time.
-export const db = new Proxy({} as NeonHttpDatabase<typeof schema>, {
-  get(_target, prop, receiver) {
-    const instance = getDb()
-    const value = Reflect.get(instance, prop, receiver)
-    if (typeof value === "function") {
-      return value.bind(instance)
-    }
-    return value
-  },
-})
+export const db: NeonHttpDatabase<typeof schema> = new Proxy(
+  {} as NeonHttpDatabase<typeof schema>,
+  {
+    get(_target, prop, receiver) {
+      const realDb = getDb()
+      const value = Reflect.get(realDb, prop, receiver)
+      if (typeof value === "function") {
+        return value.bind(realDb)
+      }
+      return value
+    },
+  }
+)

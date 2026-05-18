@@ -3,33 +3,49 @@ import {
   text,
   timestamp,
   uuid,
-  varchar,
   integer,
   boolean,
   date,
-  decimal,
+  jsonb,
+  pgEnum,
   primaryKey,
   index,
+  numeric,
 } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 
-// ─── NextAuth Required Tables ─────────────────────────────────────────────────
+// ─── Enums ──────────────────────────────────────────────────
+
+export const bookingStatusEnum = pgEnum("booking_status", [
+  "pending",
+  "approved",
+  "declined",
+  "expired",
+  "cancelled",
+  "completed",
+])
+
+export const paymentStatusEnum = pgEnum("payment_status", [
+  "authorized",
+  "captured",
+  "refunded",
+  "failed",
+])
+
+// ─── NextAuth Required Tables ───────────────────────────────
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 255 }),
-  email: varchar("email", { length: 255 }).notNull().unique(),
+  name: text("name"),
+  email: text("email").notNull().unique(),
   emailVerified: timestamp("email_verified", { mode: "date" }),
   image: text("image"),
-  // Extended profile fields
   bio: text("bio"),
-  location: varchar("location", { length: 255 }),
-  occupation: varchar("occupation", { length: 255 }),
-  socialLinks: text("social_links"), // JSON string of social media links
-  phone: varchar("phone", { length: 50 }),
-  isHost: boolean("is_host").default(false),
-  responseRate: decimal("response_rate", { precision: 5, scale: 2 }).default("100.00"),
-  responsePenalty: integer("response_penalty").default(0),
+  location: text("location"),
+  workInfo: text("work_info"),
+  socialLinks: jsonb("social_links").$type<Record<string, string>>(),
+  isHost: boolean("is_host").default(false).notNull(),
+  responseRate: numeric("response_rate", { precision: 5, scale: 2 }),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 })
@@ -40,13 +56,13 @@ export const accounts = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    type: varchar("type", { length: 255 }).notNull(),
-    provider: varchar("provider", { length: 255 }).notNull(),
-    providerAccountId: varchar("provider_account_id", { length: 255 }).notNull(),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
     refresh_token: text("refresh_token"),
     access_token: text("access_token"),
     expires_at: integer("expires_at"),
-    token_type: varchar("token_type", { length: 255 }),
+    token_type: text("token_type"),
     scope: text("scope"),
     id_token: text("id_token"),
     session_state: text("session_state"),
@@ -57,7 +73,7 @@ export const accounts = pgTable(
 )
 
 export const sessions = pgTable("sessions", {
-  sessionToken: varchar("session_token", { length: 255 }).notNull().primaryKey(),
+  sessionToken: text("session_token").primaryKey(),
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -67,14 +83,14 @@ export const sessions = pgTable("sessions", {
 export const verificationTokens = pgTable(
   "verification_tokens",
   {
-    identifier: varchar("identifier", { length: 255 }).notNull(),
-    token: varchar("token", { length: 255 }).notNull(),
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
     expires: timestamp("expires", { mode: "date" }).notNull(),
   },
   (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })]
 )
 
-// ─── Home Listings ────────────────────────────────────────────────────────────
+// ─── Home Listings ──────────────────────────────────────────
 
 export const listings = pgTable(
   "listings",
@@ -83,28 +99,22 @@ export const listings = pgTable(
     hostId: uuid("host_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    title: varchar("title", { length: 255 }).notNull(),
-    description: text("description"),
-    address: text("address"),
-    city: varchar("city", { length: 255 }).notNull(),
-    state: varchar("state", { length: 255 }),
-    country: varchar("country", { length: 255 }).notNull(),
-    postalCode: varchar("postal_code", { length: 20 }),
-    latitude: decimal("latitude", { precision: 10, scale: 7 }),
-    longitude: decimal("longitude", { precision: 10, scale: 7 }),
-    propertyType: varchar("property_type", { length: 100 }), // apartment, house, studio, etc.
-    bedrooms: integer("bedrooms").default(1),
-    bathrooms: integer("bathrooms").default(1),
-    maxGuests: integer("max_guests").default(2),
-    amenities: text("amenities"), // JSON string array
-    creativeAmenities: text("creative_amenities"), // JSON string: studio space, instruments, easels, etc.
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    location: text("location").notNull(),
+    city: text("city").notNull(),
+    country: text("country").notNull(),
+    latitude: numeric("latitude", { precision: 10, scale: 7 }),
+    longitude: numeric("longitude", { precision: 10, scale: 7 }),
+    pricePerNight: integer("price_per_night").notNull(),
+    maxGuests: integer("max_guests").default(2).notNull(),
+    bedrooms: integer("bedrooms").default(1).notNull(),
+    bathrooms: integer("bathrooms").default(1).notNull(),
+    amenities: jsonb("amenities").$type<string[]>().default([]),
+    creativeAmenities: jsonb("creative_amenities").$type<string[]>().default([]),
     houseRules: text("house_rules"),
-    pricePerNight: decimal("price_per_night", { precision: 10, scale: 2 }).notNull(),
-    currency: varchar("currency", { length: 3 }).default("USD"),
-    minimumStay: integer("minimum_stay").default(1),
-    maximumStay: integer("maximum_stay").default(365),
-    isPublished: boolean("is_published").default(false),
-    isVerified: boolean("is_verified").default(false),
+    minStayNights: integer("min_stay_nights").default(30).notNull(),
+    isPublished: boolean("is_published").default(false).notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
   },
@@ -116,7 +126,7 @@ export const listings = pgTable(
   ]
 )
 
-// ─── Listing Photos ───────────────────────────────────────────────────────────
+// ─── Listing Photos ─────────────────────────────────────────
 
 export const listingPhotos = pgTable(
   "listing_photos",
@@ -126,14 +136,14 @@ export const listingPhotos = pgTable(
       .notNull()
       .references(() => listings.id, { onDelete: "cascade" }),
     url: text("url").notNull(),
-    caption: varchar("caption", { length: 255 }),
-    sortOrder: integer("sort_order").default(0),
+    caption: text("caption"),
+    sortOrder: integer("sort_order").default(0).notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   },
   (photo) => [index("photos_listing_id_idx").on(photo.listingId)]
 )
 
-// ─── Availability ─────────────────────────────────────────────────────────────
+// ─── Availability ───────────────────────────────────────────
 
 export const availability = pgTable(
   "availability",
@@ -144,7 +154,7 @@ export const availability = pgTable(
       .references(() => listings.id, { onDelete: "cascade" }),
     startDate: date("start_date", { mode: "date" }).notNull(),
     endDate: date("end_date", { mode: "date" }).notNull(),
-    isAvailable: boolean("is_available").default(true),
+    isAvailable: boolean("is_available").default(true).notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   },
   (avail) => [
@@ -153,7 +163,7 @@ export const availability = pgTable(
   ]
 )
 
-// ─── Bookings ─────────────────────────────────────────────────────────────────
+// ─── Bookings ───────────────────────────────────────────────
 
 export const bookings = pgTable(
   "bookings",
@@ -170,20 +180,12 @@ export const bookings = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     checkIn: date("check_in", { mode: "date" }).notNull(),
     checkOut: date("check_out", { mode: "date" }).notNull(),
-    totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
-    currency: varchar("currency", { length: 3 }).default("USD"),
-    status: varchar("status", { length: 50 }).default("pending").notNull(),
-    // pending -> approved -> paid -> active -> completed
-    // pending -> declined
-    // pending -> expired (auto-decline after 24h)
-    // approved -> cancelled
+    totalPrice: integer("total_price").notNull(),
+    status: bookingStatusEnum("status").default("pending").notNull(),
     guestMessage: text("guest_message"),
-    hostMessage: text("host_message"),
-    stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
-    stripePaymentStatus: varchar("stripe_payment_status", { length: 50 }),
+    hostResponseNote: text("host_response_note"),
+    respondBy: timestamp("respond_by", { mode: "date" }).notNull(),
     respondedAt: timestamp("responded_at", { mode: "date" }),
-    paidAt: timestamp("paid_at", { mode: "date" }),
-    expiresAt: timestamp("expires_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
   },
@@ -192,11 +194,32 @@ export const bookings = pgTable(
     index("bookings_guest_id_idx").on(booking.guestId),
     index("bookings_host_id_idx").on(booking.hostId),
     index("bookings_status_idx").on(booking.status),
-    index("bookings_expires_at_idx").on(booking.expiresAt),
   ]
 )
 
-// ─── Messages ─────────────────────────────────────────────────────────────────
+// ─── Payments ───────────────────────────────────────────────
+
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    bookingId: uuid("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    stripePaymentIntentId: text("stripe_payment_intent_id").notNull().unique(),
+    amount: integer("amount").notNull(),
+    currency: text("currency").default("usd").notNull(),
+    status: paymentStatusEnum("status").default("authorized").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (payment) => [
+    index("payments_booking_id_idx").on(payment.bookingId),
+    index("payments_stripe_id_idx").on(payment.stripePaymentIntentId),
+  ]
+)
+
+// ─── Messages ───────────────────────────────────────────────
 
 export const messages = pgTable(
   "messages",
@@ -209,7 +232,7 @@ export const messages = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
-    isRead: boolean("is_read").default(false),
+    isRead: boolean("is_read").default(false).notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   },
   (message) => [
@@ -218,7 +241,7 @@ export const messages = pgTable(
   ]
 )
 
-// ─── Relations ────────────────────────────────────────────────────────────────
+// ─── Relations ──────────────────────────────────────────────
 
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
@@ -226,19 +249,28 @@ export const usersRelations = relations(users, ({ many }) => ({
   listings: many(listings),
   bookingsAsGuest: many(bookings, { relationName: "guestBookings" }),
   bookingsAsHost: many(bookings, { relationName: "hostBookings" }),
-  messages: many(messages),
+  sentMessages: many(messages),
 }))
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
-  user: one(users, { fields: [accounts.userId], references: [users.id] }),
+  user: one(users, {
+    fields: [accounts.userId],
+    references: [users.id],
+  }),
 }))
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
-  user: one(users, { fields: [sessions.userId], references: [users.id] }),
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
 }))
 
 export const listingsRelations = relations(listings, ({ one, many }) => ({
-  host: one(users, { fields: [listings.hostId], references: [users.id] }),
+  host: one(users, {
+    fields: [listings.hostId],
+    references: [users.id],
+  }),
   photos: many(listingPhotos),
   availability: many(availability),
   bookings: many(bookings),
@@ -273,7 +305,15 @@ export const bookingsRelations = relations(bookings, ({ one, many }) => ({
     references: [users.id],
     relationName: "hostBookings",
   }),
+  payment: one(payments),
   messages: many(messages),
+}))
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  booking: one(bookings, {
+    fields: [payments.bookingId],
+    references: [bookings.id],
+  }),
 }))
 
 export const messagesRelations = relations(messages, ({ one }) => ({

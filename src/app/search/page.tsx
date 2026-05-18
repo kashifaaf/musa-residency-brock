@@ -1,112 +1,94 @@
 import { db } from "@/lib/db"
 import { listings } from "@/lib/db/schema"
-import { eq, and, ilike, gte, lte, or } from "drizzle-orm"
-import { Navbar } from "@/components/Navbar"
+import { eq, and, ilike, or, desc } from "drizzle-orm"
+import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
+import { SearchForm } from "@/components/SearchForm"
 import { ListingCard } from "@/components/ListingCard"
-import { SearchBar } from "@/components/SearchBar"
-import { EmptyState } from "@/components/EmptyState"
-import { Search } from "lucide-react"
-import type { ListingWithHost } from "@/types"
+import { LISTINGS_PER_PAGE } from "@/lib/constants"
+import type { ListingWithHost, SearchParams } from "@/types"
 
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
+  searchParams: Promise<SearchParams>
 }) {
   const params = await searchParams
-  const location = typeof params.location === "string" ? params.location : undefined
-  const checkIn = typeof params.checkIn === "string" ? params.checkIn : undefined
-  const checkOut = typeof params.checkOut === "string" ? params.checkOut : undefined
-  const guests = typeof params.guests === "string" ? parseInt(params.guests) : undefined
-  const country = typeof params.country === "string" ? params.country : undefined
-
-  const conditions = [eq(listings.isPublished, true)]
-
-  if (location) {
-    conditions.push(
-      or(
-        ilike(listings.city, `%${location}%`),
-        ilike(listings.country, `%${location}%`),
-        ilike(listings.state, `%${location}%`)
-      )!
-    )
-  }
-
-  if (country) {
-    conditions.push(ilike(listings.country, `%${country}%`))
-  }
-
-  if (guests) {
-    conditions.push(gte(listings.maxGuests, guests))
-  }
+  const { city, country, checkIn, checkOut, guests, minPrice, maxPrice } = params
 
   let results: ListingWithHost[] = []
   try {
+    const conditions = [eq(listings.isPublished, true)]
+
+    if (city) {
+      conditions.push(
+        or(
+          ilike(listings.city, `%${city}%`),
+          ilike(listings.country, `%${city}%`),
+          ilike(listings.location, `%${city}%`)
+        )!
+      )
+    }
+
     results = (await db.query.listings.findMany({
       where: and(...conditions),
       with: {
-        photos: {
-          orderBy: (photos, { asc }) => [asc(photos.sortOrder)],
-          limit: 1,
-        },
+        photos: true,
         host: {
-          columns: { id: true, name: true, image: true, bio: true, location: true },
+          columns: { id: true, name: true, image: true, location: true, bio: true },
         },
       },
-      orderBy: (listings, { desc }) => [desc(listings.createdAt)],
-      limit: 50,
+      orderBy: [desc(listings.createdAt)],
+      limit: LISTINGS_PER_PAGE,
     })) as ListingWithHost[]
-  } catch (error) {
-    console.error("Search error:", error)
+
+    if (guests) {
+      const guestCount = parseInt(guests, 10)
+      if (!isNaN(guestCount)) {
+        results = results.filter((l) => l.maxGuests >= guestCount)
+      }
+    }
+  } catch (e) {
+    console.error("Search error:", e)
   }
 
-  const searchDescription = location
-    ? `Showing results for "${location}"`
-    : country
-      ? `Showing results in ${country}`
-      : "All available homes"
-
   return (
-    <>
-      <Navbar />
-      <main className="min-h-screen bg-gray-50">
-        <div className="border-b border-gray-200 bg-white py-6">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Browse Homes</h1>
-                <p className="mt-1 text-sm text-gray-500">{searchDescription}</p>
-              </div>
-              <SearchBar compact />
-            </div>
-          </div>
-        </div>
-
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          {results.length === 0 ? (
-            <EmptyState
-              icon={Search}
-              title="No homes found"
-              description="Try adjusting your search criteria or browse all available listings."
-              actionLabel="Clear Search"
-              actionHref="/search"
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="flex-1 px-4 py-8">
+        <div className="mx-auto max-w-7xl">
+          <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Find Your Next Home</h1>
+          <div className="mt-6">
+            <SearchForm
+              defaultValues={{ city: city || "", checkIn: checkIn || "", checkOut: checkOut || "", guests: guests || "" }}
+              variant="inline"
             />
-          ) : (
-            <>
-              <p className="mb-6 text-sm text-gray-500">
-                {results.length} home{results.length !== 1 ? "s" : ""} found
-              </p>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {results.map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} />
-                ))}
+          </div>
+          <div className="mt-8">
+            {results.length === 0 ? (
+              <div className="py-20 text-center">
+                <p className="text-lg font-medium text-foreground">No homes found</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Try adjusting your search criteria or browse all available homes.
+                </p>
               </div>
-            </>
-          )}
+            ) : (
+              <>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  {results.length} home{results.length !== 1 ? "s" : ""} found
+                  {city ? ` for "${city}"` : ""}
+                </p>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {results.map((listing) => (
+                    <ListingCard key={listing.id} listing={listing} />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </main>
       <Footer />
-    </>
+    </div>
   )
 }

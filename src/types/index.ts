@@ -1,110 +1,82 @@
-import type { InferSelectModel, InferInsertModel } from "drizzle-orm"
 import type {
   users,
   listings,
   listingPhotos,
   availability,
   bookings,
+  payments,
   messages,
 } from "@/lib/db/schema"
-import type { BOOKING_STATUS, PROPERTY_TYPES } from "@/lib/constants"
 
-// ─── Database Model Types ─────────────────────────────────────────────────────
+// ─── Drizzle inferred types ─────────────────────────────────
 
-export type User = InferSelectModel<typeof users>
-export type NewUser = InferInsertModel<typeof users>
+export type User = typeof users.$inferSelect
+export type NewUser = typeof users.$inferInsert
 
-export type Listing = InferSelectModel<typeof listings>
-export type NewListing = InferInsertModel<typeof listings>
+export type Listing = typeof listings.$inferSelect
+export type NewListing = typeof listings.$inferInsert
 
-export type ListingPhoto = InferSelectModel<typeof listingPhotos>
-export type NewListingPhoto = InferInsertModel<typeof listingPhotos>
+export type ListingPhoto = typeof listingPhotos.$inferSelect
+export type NewListingPhoto = typeof listingPhotos.$inferInsert
 
-export type Availability = InferSelectModel<typeof availability>
-export type NewAvailability = InferInsertModel<typeof availability>
+export type Availability = typeof availability.$inferSelect
+export type NewAvailability = typeof availability.$inferInsert
 
-export type Booking = InferSelectModel<typeof bookings>
-export type NewBooking = InferInsertModel<typeof bookings>
+export type Booking = typeof bookings.$inferSelect
+export type NewBooking = typeof bookings.$inferInsert
 
-export type Message = InferSelectModel<typeof messages>
-export type NewMessage = InferInsertModel<typeof messages>
+export type Payment = typeof payments.$inferSelect
+export type NewPayment = typeof payments.$inferInsert
 
-// ─── Enum Types ───────────────────────────────────────────────────────────────
+export type Message = typeof messages.$inferSelect
+export type NewMessage = typeof messages.$inferInsert
+
+// ─── Application types ──────────────────────────────────────
 
 export type BookingStatus =
-  (typeof BOOKING_STATUS)[keyof typeof BOOKING_STATUS]
+  | "pending"
+  | "approved"
+  | "declined"
+  | "expired"
+  | "cancelled"
+  | "completed"
 
-export type PropertyType = (typeof PROPERTY_TYPES)[number]
-
-// ─── Extended / Joined Types ──────────────────────────────────────────────────
+export type PaymentStatus = "authorized" | "captured" | "refunded" | "failed"
 
 export type ListingWithPhotos = Listing & {
   photos: ListingPhoto[]
 }
 
 export type ListingWithHost = Listing & {
-  host: Pick<User, "id" | "name" | "image" | "bio" | "location">
+  host: Pick<User, "id" | "name" | "image" | "location" | "bio">
   photos: ListingPhoto[]
 }
 
 export type BookingWithDetails = Booking & {
   listing: ListingWithPhotos
-  guest: Pick<User, "id" | "name" | "image" | "bio" | "location" | "occupation">
+  guest: Pick<User, "id" | "name" | "image" | "location" | "bio" | "workInfo" | "socialLinks">
   host: Pick<User, "id" | "name" | "image">
+  payment: Payment | null
 }
 
 export type MessageWithSender = Message & {
   sender: Pick<User, "id" | "name" | "image">
 }
 
-// ─── Search / Filter Types ────────────────────────────────────────────────────
-
-export type SearchFilters = {
+export type SearchParams = {
   city?: string
   country?: string
-  checkIn?: Date
-  checkOut?: Date
-  guests?: number
-  minPrice?: number
-  maxPrice?: number
-  propertyType?: PropertyType
+  checkIn?: string
+  checkOut?: string
+  guests?: string
+  minPrice?: string
+  maxPrice?: string
 }
 
-export type SearchResult = ListingWithHost & {
-  availableDates: Availability[]
+export type SocialLinks = {
+  instagram?: string
+  website?: string
+  linkedin?: string
+  twitter?: string
+  [key: string]: string | undefined
 }
-
-// ─── Auth Types ───────────────────────────────────────────────────────────────
-
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string
-      name?: string | null
-      email?: string | null
-      image?: string | null
-    }
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    sub: string
-  }
-}
-
-// ─── API Response Types ───────────────────────────────────────────────────────
-
-export type ApiResponse<T = unknown> = {
-  success: boolean
-  data?: T
-  error?: string
-}
-
-export type PaginatedResponse<T> = ApiResponse<{
-  items: T[]
-  total: number
-  page: number
-  pageSize: number
-  totalPages: number
-}>
